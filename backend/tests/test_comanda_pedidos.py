@@ -824,13 +824,19 @@ async def test_precisao_decimal_e_arredondamento_round_half_up(db_session: Async
 
 @pytest.mark.asyncio
 async def test_abrir_comanda_duplicidade_concorrente_retorna_409(db_session: AsyncSession):
+    from sqlalchemy.exc import IntegrityError
+
     dono_a, rest_a, _, _, _ = await _criar_cenario_pedidos(db_session)
     headers_a = _auth_headers(dono_a, rest_a)
 
     comanda_repo = ComandaRepository(db_session)
     await comanda_repo.create(restaurante_id=rest_a.id, numero_mesa=42)
-    await comanda_repo.create(restaurante_id=rest_a.id, numero_mesa=42)
     await db_session.commit()
+
+    # O índice único parcial uq_comanda_restaurante_mesa_aberta impede duplicidade direto no banco
+    with pytest.raises(IntegrityError):
+        await comanda_repo.create(restaurante_id=rest_a.id, numero_mesa=42)
+    await db_session.rollback()
 
     async def override_get_db():
         yield db_session
