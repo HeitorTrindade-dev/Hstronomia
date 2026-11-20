@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { TopBar } from '../../components/layout/TopBar'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Badge, Button } from '../../components/ui'
-import { ShieldCheck, Store, Utensils, ArrowRight, BookOpen, KeyRound } from 'lucide-react'
+import { ShieldCheck, Store, Utensils, ArrowRight, BookOpen, KeyRound, DollarSign, Users, Flame } from 'lucide-react'
 
 export function AdminDashboardPage() {
   const { user, restaurante, logout } = useAuth()
@@ -66,22 +66,79 @@ export function AdminDashboardPage() {
                 <CardTitle>Módulos do Sistema</CardTitle>
                 <Utensils className="w-4 h-4 text-zinc-400" />
               </div>
-              <CardDescription>Status das entregas da esteira</CardDescription>
+              <CardDescription>Todos os módulos ativos e operacionais</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
               <div className="flex flex-wrap gap-1.5">
-                <Badge variant="emerald" size="sm" withDot>Cardápio (#52)</Badge>
-                <Badge variant="emerald" size="sm" withDot>Restaurantes & PINs (#52)</Badge>
-                <Badge variant="amber" size="sm">Comandas (#53)</Badge>
-                <Badge variant="amber" size="sm">Fechamento (#54)</Badge>
-                <Badge variant="zinc" size="sm">Financeiro (#56)</Badge>
+                <Badge variant="emerald" size="sm" withDot>Cardápio</Badge>
+                <Badge variant="emerald" size="sm" withDot>Restaurantes</Badge>
+                <Badge variant="emerald" size="sm" withDot>Comandas</Badge>
+                <Badge variant="emerald" size="sm" withDot>Cozinha KDS</Badge>
+                <Badge variant="emerald" size="sm" withDot>Financeiro</Badge>
               </div>
             </CardContent>
           </Card>
         </div>
 
         {/* Atalhos Rápidos */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <Card className="hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <DollarSign className="w-5 h-5 text-emerald-600" />
+                  <CardTitle>Financeiro & Despesas</CardTitle>
+                </div>
+                <Link to="/admin/financeiro">
+                  <Button variant="ghost" size="sm">
+                    Acessar <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                  </Button>
+                </Link>
+              </div>
+              <CardDescription>
+                Acompanhe o saldo consolidado, vendas por período, controle de despesas operacionais e categorização.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+
+          <Card className="hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Users className="w-5 h-5 text-sky-600" />
+                  <CardTitle>Salão & Comandas</CardTitle>
+                </div>
+                <Link to="/garcom/mesas">
+                  <Button variant="ghost" size="sm">
+                    Acessar <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                  </Button>
+                </Link>
+              </div>
+              <CardDescription>
+                Monitore mesas livres e ocupadas em tempo real, abra comandas e confira pedidos em andamento.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+
+          <Card className="hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Flame className="w-5 h-5 text-amber-500" />
+                  <CardTitle>Cozinha KDS</CardTitle>
+                </div>
+                <Link to="/cozinha">
+                  <Button variant="ghost" size="sm">
+                    Acessar <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                  </Button>
+                </Link>
+              </div>
+              <CardDescription>
+                Acesse a fila KDS de pedidos em tempo real em Dark Mode permanente com controle de tempo de preparo.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+
           <Card className="hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors">
             <CardHeader>
               <div className="flex items-center justify-between">
