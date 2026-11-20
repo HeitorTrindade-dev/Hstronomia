@@ -1,10 +1,12 @@
+import logging
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.controllers.deps import UserSession, get_current_user
 from src.core.database import get_db
+from src.core.rate_limit import operational_login_rate_limiter
 from src.schemas.auth import (
     AuthMeResponse,
     DonoCreate,
@@ -15,6 +17,7 @@ from src.schemas.auth import (
 )
 from src.services.auth import AuthService
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["Autenticação"])
 
 
@@ -55,11 +58,43 @@ async def login_dono(
     summary="Login operacional por PIN (Garçom ou Cozinha)",
 )
 async def login_operacional(
+    request: Request,
     data: OperacionalLoginRequest,
     session: Annotated[AsyncSession, Depends(get_db)],
 ):
+    client_ip = request.client.host if request.client else "unknown"
+    rate_key = f"{client_ip}:{data.slug}"
+
+    bloqueado, retry_after = operational_login_rate_limiter.is_blocked(rate_key)
+    if bloqueado:
+        logger.warning(
+            "Bloqueio por rate limit no login operacional (ip=%s, slug=%s, retry_after=%ss)",
+            client_ip,
+            data.slug,
+            retry_after,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Muitas tentativas de autenticação. Tente novamente mais tarde.",
+            headers={"Retry-After": str(retry_after)},
+        )
+
     service = AuthService(session)
-    return await service.autenticar_operacional(data)
+    try:
+        response = await service.autenticar_operacional(data)
+    except HTTPException as exc:
+        if exc.status_code == status.HTTP_401_UNAUTHORIZED:
+            tentativas = operational_login_rate_limiter.record_failure(rate_key)
+            logger.warning(
+                "Falha no login operacional (ip=%s, slug=%s, tentativas=%d)",
+                client_ip,
+                data.slug,
+                tentativas,
+            )
+        raise
+
+    operational_login_rate_limiter.reset_key(rate_key)
+    return response
 
 
 @router.get(
