@@ -1,7 +1,7 @@
 # 0002 — Configuração de Conexão Async (SQLAlchemy 2.0) e Alembic
 
 - **Data**: 2026-11-20
-- **Autor/Agente**: Antigravity (Google DeepMind)
+- **Autor/Agente**: Antigravity (Modelo: Gemini 3.8 Flash)
 - **Tipo de Mudança**: Database / Infraestrutura
 - **Issue Vinculada**: [#2](https://github.com/HeitorTrindade-dev/Hstronomia/issues/2)
 - **Status**: Concluído

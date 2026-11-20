@@ -1,7 +1,7 @@
 # 0001 — Setup Inicial do Backend e Docker Compose
 
 - **Data**: 2026-11-20
-- **Autor/Agente**: Antigravity (Google DeepMind)
+- **Autor/Agente**: Antigravity (Modelo: Gemini 3.8 Flash)
 - **Tipo de Mudança**: Setup / Infraestrutura
 - **Issue Vinculada**: [#1](https://github.com/HeitorTrindade-dev/Hstronomia/issues/1)
 - **Status**: Concluído
