@@ -1,5 +1,6 @@
 import logging
 import uuid
+from datetime import UTC, datetime
 from decimal import ROUND_HALF_UP, Decimal
 
 from fastapi import HTTPException, status
@@ -11,10 +12,17 @@ from src.models.item_comanda import ItemComanda
 from src.repositories.comanda import ComandaRepository
 from src.repositories.item import ItemRepository
 from src.repositories.item_comanda import ItemComandaRepository
-from src.schemas.comanda import ComandaCreate, ItemComandaCreate
+from src.schemas.comanda import (
+    ComandaCreate,
+    ComandaFecharRequest,
+    ComandaPreviaResponse,
+    ItemComandaCreate,
+    ItemComandaResponse,
+)
 
 logger = logging.getLogger(__name__)
 CENTAVOS = Decimal("0.01")
+TAXA_SERVICO_PERCENTUAL = Decimal("0.10")
 MAX_VALOR_MONETARIO = Decimal("99999999.99")
 
 
@@ -174,3 +182,142 @@ class ComandaService:
             item_comanda.preco_unitario,
         )
         return item_comanda
+
+    def _calcular_valores_comanda(
+        self,
+        itens: list[ItemComanda],
+        *,
+        incluir_taxa_servico: bool,
+        desconto: Decimal,
+    ) -> tuple[Decimal, Decimal, Decimal, Decimal]:
+        subtotal = self.quantizar_moeda(
+            sum(
+                (Decimal(ic.preco_unitario) * Decimal(ic.quantidade) for ic in itens),
+                Decimal("0.00"),
+            )
+        )
+        taxa_servico = (
+            self.quantizar_moeda(subtotal * TAXA_SERVICO_PERCENTUAL)
+            if incluir_taxa_servico
+            else Decimal("0.00")
+        )
+        desconto_quantizado = self.quantizar_moeda(Decimal(desconto))
+        if desconto_quantizado < Decimal("0.00"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="O desconto não pode ser negativo.",
+            )
+
+        valor_bruto = self.quantizar_moeda(subtotal + taxa_servico)
+        if desconto_quantizado > valor_bruto:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="O desconto não pode ser maior que o valor total da comanda.",
+            )
+
+        valor_total = self.quantizar_moeda(valor_bruto - desconto_quantizado)
+        if subtotal > MAX_VALOR_MONETARIO or valor_total > MAX_VALOR_MONETARIO:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="O valor total da comanda excede o limite máximo suportado.",
+            )
+
+        return subtotal, taxa_servico, desconto_quantizado, valor_total
+
+    async def obter_previa(
+        self,
+        restaurante_id: uuid.UUID,
+        comanda_id: uuid.UUID,
+        *,
+        incluir_taxa_servico: bool = True,
+        desconto: Decimal = Decimal("0.00"),
+    ) -> ComandaPreviaResponse:
+        comanda = await self.comanda_repo.get_by_id_and_restaurante(
+            comanda_id,
+            restaurante_id,
+        )
+        if not comanda:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Comanda não encontrada.",
+            )
+
+        itens = await self.item_comanda_repo.list_by_comanda(comanda.id, restaurante_id)
+        subtotal, taxa_servico, desconto_q, valor_total = self._calcular_valores_comanda(
+            itens,
+            incluir_taxa_servico=incluir_taxa_servico,
+            desconto=desconto,
+        )
+
+        return ComandaPreviaResponse(
+            comanda_id=comanda.id,
+            restaurante_id=comanda.restaurante_id,
+            numero_mesa=comanda.numero_mesa,
+            identificador=comanda.identificador,
+            tipo_atendimento=comanda.tipo_atendimento,
+            status=comanda.status,
+            itens=[ItemComandaResponse.model_validate(ic) for ic in itens],
+            subtotal=subtotal,
+            incluir_taxa_servico=incluir_taxa_servico,
+            taxa_servico=taxa_servico,
+            desconto=desconto_q,
+            valor_total=valor_total,
+        )
+
+    async def fechar_comanda(
+        self,
+        restaurante_id: uuid.UUID,
+        comanda_id: uuid.UUID,
+        data: ComandaFecharRequest,
+    ) -> Comanda:
+        comanda = await self.comanda_repo.get_by_id_and_restaurante(
+            comanda_id,
+            restaurante_id,
+        )
+        if not comanda:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Comanda não encontrada.",
+            )
+
+        if comanda.status != "aberta":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Apenas comandas abertas podem ser fechadas.",
+            )
+
+        itens = await self.item_comanda_repo.list_by_comanda(comanda.id, restaurante_id)
+        subtotal, taxa_servico, desconto_q, valor_total = self._calcular_valores_comanda(
+            itens,
+            incluir_taxa_servico=data.incluir_taxa_servico,
+            desconto=data.desconto,
+        )
+
+        fechada = await self.comanda_repo.fechar(
+            comanda_id=comanda.id,
+            restaurante_id=restaurante_id,
+            subtotal=subtotal,
+            taxa_servico=taxa_servico,
+            desconto=desconto_q,
+            valor_total=valor_total,
+            metodo_pagamento=data.metodo_pagamento,
+            fechado_em=datetime.now(UTC),
+        )
+        if not fechada:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Comanda não encontrada.",
+            )
+
+        logger.info(
+            "Comanda fechada (restaurante_id=%s, comanda_id=%s, subtotal=%s, "
+            "taxa_servico=%s, desconto=%s, valor_total=%s, metodo_pagamento=%s)",
+            restaurante_id,
+            fechada.id,
+            fechada.subtotal,
+            fechada.taxa_servico,
+            fechada.desconto,
+            fechada.valor_total,
+            fechada.metodo_pagamento,
+        )
+        return fechada
