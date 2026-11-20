@@ -19,6 +19,7 @@ interface AuthContextType {
   role: UserRole | null
   user: Dono | null
   restaurante: Restaurante | null
+  restauranteAtivo: Restaurante | null
   isAuthenticated: boolean
   isLoading: boolean
   loginDono: (credentials: LoginDonoCredentials) => Promise<void>
@@ -147,6 +148,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     role,
     user,
     restaurante,
+    restauranteAtivo: restaurante,
     isAuthenticated: Boolean(token && role),
     isLoading,
     loginDono,

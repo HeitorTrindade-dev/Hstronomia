@@ -1,9 +1,21 @@
 import React from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { UtensilsCrossed, LogOut, Moon, Sun, Store, BookOpen, LayoutDashboard } from 'lucide-react'
+import {
+  UtensilsCrossed,
+  LogOut,
+  Moon,
+  Sun,
+  Store,
+  BookOpen,
+  LayoutDashboard,
+  DollarSign,
+  Users,
+  Flame,
+} from 'lucide-react'
 import { Badge, BadgeVariant } from '../ui/Badge'
 import { Button } from '../ui/Button'
 import { Restaurante } from '../../types/restaurante'
+import { useAuth } from '../../contexts/AuthContext'
 
 export type UserRole = 'dono' | 'garcom' | 'cozinha'
 
@@ -26,24 +38,34 @@ const roleBadgeConfig: Record<UserRole, { label: string; variant: BadgeVariant }
 }
 
 export function TopBar({
-  restaurantName,
-  role,
-  userName,
-  onLogout,
+  restaurantName: propRestaurantName,
+  role: propRole,
+  userName: propUserName,
+  onLogout: propOnLogout,
   actions,
   isDarkMode,
   onToggleDarkMode,
   restaurantesDisponiveis = [],
   onSelectRestaurante,
 }: TopBarProps) {
-  const roleConfig = role ? roleBadgeConfig[role] : null
+  const auth = useAuth()
   const location = useLocation()
+
+  const role = (propRole || auth.role) as UserRole | undefined
+  const restaurantName = propRestaurantName || auth.restaurante?.nome
+  const userName = propUserName || auth.user?.nome
+  const onLogout = propOnLogout || auth.logout
+
+  const roleConfig = role ? roleBadgeConfig[role] : null
 
   return (
     <header className="h-14 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 sticky top-0 z-40 px-4 flex items-center justify-between select-none">
       {/* Lado Esquerdo: Marca & Navegação / Restaurante Ativo */}
       <div className="flex items-center gap-3">
-        <Link to={role === 'dono' ? '/admin' : role === 'garcom' ? '/garcom' : role === 'cozinha' ? '/cozinha' : '/'} className="flex items-center gap-2 hover:opacity-90 transition-opacity">
+        <Link
+          to={role === 'dono' ? '/admin' : role === 'garcom' ? '/garcom/mesas' : role === 'cozinha' ? '/cozinha' : '/'}
+          className="flex items-center gap-2 hover:opacity-90 transition-opacity"
+        >
           <div className="w-8 h-8 rounded-md bg-red-50 dark:bg-red-950/40 text-red-600 flex items-center justify-center border border-red-100 dark:border-red-900/50">
             <UtensilsCrossed className="w-4 h-4" strokeWidth={2} />
           </div>
@@ -83,7 +105,7 @@ export function TopBar({
 
         {/* Links de navegação para Dono */}
         {role === 'dono' && (
-          <nav className="hidden md:flex items-center gap-1 ml-4 border-l border-zinc-200 dark:border-zinc-800 pl-4">
+          <nav className="hidden lg:flex items-center gap-1 ml-4 border-l border-zinc-200 dark:border-zinc-800 pl-4">
             <Link
               to="/admin"
               className={`px-2.5 py-1 rounded text-xs font-medium flex items-center gap-1.5 transition-colors ${
@@ -109,6 +131,18 @@ export function TopBar({
             </Link>
 
             <Link
+              to="/admin/financeiro"
+              className={`px-2.5 py-1 rounded text-xs font-medium flex items-center gap-1.5 transition-colors ${
+                location.pathname.startsWith('/admin/financeiro')
+                  ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100'
+                  : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200'
+              }`}
+            >
+              <DollarSign className="w-3.5 h-3.5" />
+              <span>Financeiro</span>
+            </Link>
+
+            <Link
               to="/admin/restaurantes"
               className={`px-2.5 py-1 rounded text-xs font-medium flex items-center gap-1.5 transition-colors ${
                 location.pathname.startsWith('/admin/restaurantes')
@@ -118,6 +152,30 @@ export function TopBar({
             >
               <Store className="w-3.5 h-3.5" />
               <span>Restaurantes & PINs</span>
+            </Link>
+
+            <Link
+              to="/garcom/mesas"
+              className={`px-2.5 py-1 rounded text-xs font-medium flex items-center gap-1.5 transition-colors ${
+                location.pathname.startsWith('/garcom')
+                  ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100'
+                  : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200'
+              }`}
+            >
+              <Users className="w-3.5 h-3.5" />
+              <span>Salão</span>
+            </Link>
+
+            <Link
+              to="/cozinha"
+              className={`px-2.5 py-1 rounded text-xs font-medium flex items-center gap-1.5 transition-colors ${
+                location.pathname.startsWith('/cozinha')
+                  ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100'
+                  : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200'
+              }`}
+            >
+              <Flame className="w-3.5 h-3.5" />
+              <span>KDS</span>
             </Link>
           </nav>
         )}

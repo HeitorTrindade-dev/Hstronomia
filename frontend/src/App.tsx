@@ -12,8 +12,10 @@ import { AcessoOperacional } from './pages/auth/AcessoOperacional'
 import { AdminDashboardPage } from './pages/admin/AdminDashboardPage'
 import { Restaurantes } from './pages/admin/Restaurantes'
 import { Cardapio } from './pages/admin/Cardapio'
-import { GarcomDashboardPage } from './pages/garcom/GarcomDashboardPage'
-import { CozinhaKdsPage } from './pages/cozinha/CozinhaKdsPage'
+import { Financeiro } from './pages/admin/Financeiro'
+import { Mesas } from './pages/garcom/Mesas'
+import { ComandaDetalhe } from './pages/garcom/ComandaDetalhe'
+import { KDS } from './pages/cozinha/KDS'
 import { DesignSystemPage } from './pages/DesignSystemPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 
@@ -90,23 +92,40 @@ export default function App() {
               </ProtectedRoute>
             }
           />
-
-          {/* Rotas Protegidas - Garçom */}
           <Route
-            path="/garcom/*"
+            path="/admin/financeiro"
             element={
-              <ProtectedRoute allowedRoles={['garcom']}>
-                <GarcomDashboardPage />
+              <ProtectedRoute allowedRoles={['dono']}>
+                <Financeiro />
               </ProtectedRoute>
             }
           />
 
-          {/* Rotas Protegidas - Cozinha KDS */}
+          {/* Rotas Protegidas - Atendimento / Salão (Garçom ou Dono) */}
+          <Route path="/garcom" element={<Navigate to="/garcom/mesas" replace />} />
           <Route
-            path="/cozinha/*"
+            path="/garcom/mesas"
             element={
-              <ProtectedRoute allowedRoles={['cozinha']}>
-                <CozinhaKdsPage />
+              <ProtectedRoute allowedRoles={['dono', 'garcom']}>
+                <Mesas />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/garcom/comandas/:id"
+            element={
+              <ProtectedRoute allowedRoles={['dono', 'garcom']}>
+                <ComandaDetalhe />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Rotas Protegidas - Cozinha KDS (Cozinha ou Dono) */}
+          <Route
+            path="/cozinha"
+            element={
+              <ProtectedRoute allowedRoles={['dono', 'cozinha']}>
+                <KDS />
               </ProtectedRoute>
             }
           />
