@@ -57,6 +57,12 @@ class ItemUpdate(BaseModel):
         return limpa or None
 
 
+class ItemDisponibilidadeUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    disponivel: bool
+
+
 class ItemResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
