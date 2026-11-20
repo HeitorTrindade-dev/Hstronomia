@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from decimal import ROUND_HALF_UP, Decimal
 
 from fastapi import HTTPException, status
-from sqlalchemy.exc import MultipleResultsFound
+from sqlalchemy.exc import IntegrityError, MultipleResultsFound
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.comanda import Comanda
@@ -159,12 +159,19 @@ class ComandaService:
                     detail="Já existe uma comanda aberta para esta mesa.",
                 )
 
-        comanda = await self.comanda_repo.create(
-            restaurante_id=restaurante_id,
-            numero_mesa=data.numero_mesa,
-            identificador=data.identificador,
-            tipo_atendimento=data.tipo_atendimento,
-        )
+        try:
+            comanda = await self.comanda_repo.create(
+                restaurante_id=restaurante_id,
+                numero_mesa=data.numero_mesa,
+                identificador=data.identificador,
+                tipo_atendimento=data.tipo_atendimento,
+            )
+        except IntegrityError:
+            await self.session.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Já existe uma comanda aberta para esta mesa.",
+            ) from None
         logger.info(
             "Comanda aberta (restaurante_id=%s, comanda_id=%s, tipo=%s, mesa=%s)",
             restaurante_id,

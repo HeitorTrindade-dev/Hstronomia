@@ -28,6 +28,14 @@ class Comanda(Base):
     __table_args__ = (
         Index("ix_comanda_restaurante_status", "restaurante_id", "status"),
         Index("ix_comanda_restaurante_mesa_status", "restaurante_id", "numero_mesa", "status"),
+        Index(
+            "uq_comanda_restaurante_mesa_aberta",
+            "restaurante_id",
+            "numero_mesa",
+            unique=True,
+            postgresql_where=text("status = 'aberta' AND numero_mesa IS NOT NULL"),
+            sqlite_where=text("status = 'aberta' AND numero_mesa IS NOT NULL"),
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(

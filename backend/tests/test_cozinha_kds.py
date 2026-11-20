@@ -185,8 +185,8 @@ async def test_kds_fila_fifo_contexto_filtros_e_paginacao(db_session: AsyncSessi
         criado_em=base_time + timedelta(seconds=20),
     )
 
-    # Itens que NÃO devem aparecer na fila
-    await _criar_item_comanda(
+    # Itens que NÃO devem aparecer na fila padrão (pendente/em_preparo)
+    pedido_pronto = await _criar_item_comanda(
         db_session,
         comanda_id=cenario["comanda_mesa_a"].id,
         item_id=cenario["item_a1"].id,
@@ -284,14 +284,15 @@ async def test_kds_fila_fifo_contexto_filtros_e_paginacao(db_session: AsyncSessi
             assert res_preparo.status_code == 200
             assert [i["id"] for i in res_preparo.json()] == [str(pedido_1.id)]
 
-            # Filtro inválido (?status=pronto ou ?status=entregue) -> 422
-            assert (
-                await client.get(
-                    "/api/v1/cozinha/pedidos",
-                    headers=headers,
-                    params={"status": "pronto"},
-                )
-            ).status_code == 422
+            # Filtro por ?status=pronto é válido (200), enquanto ?status=entregue na fila é inválido (422)
+            res_pronto = await client.get(
+                "/api/v1/cozinha/pedidos",
+                headers=headers,
+                params={"status": "pronto"},
+            )
+            assert res_pronto.status_code == 200
+            assert [i["id"] for i in res_pronto.json()] == [str(pedido_pronto.id)]
+
             assert (
                 await client.get(
                     "/api/v1/cozinha/pedidos",
