@@ -1,7 +1,7 @@
-from dataclasses import dataclass
 import hmac
-from typing import Annotated
 import uuid
+from dataclasses import dataclass
+from typing import Annotated
 
 from fastapi import Depends, HTTPException, Query, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -76,15 +76,17 @@ async def get_current_user(
             raise unauthorized_exception
 
         pin_fp = payload.get("pin_fp")
-        if pin_fp is not None:
-            pin_atual = (
-                restaurante.codigo_garcom
-                if role == "garcom"
-                else restaurante.codigo_cozinha
-            )
-            fp_esperado = compute_pin_fingerprint(restaurante.id, role, pin_atual)
-            if not isinstance(pin_fp, str) or not hmac.compare_digest(pin_fp, fp_esperado):
-                raise unauthorized_exception
+        if not isinstance(pin_fp, str) or not pin_fp:
+            raise unauthorized_exception
+
+        pin_atual = (
+            restaurante.codigo_garcom
+            if role == "garcom"
+            else restaurante.codigo_cozinha
+        )
+        fp_esperado = compute_pin_fingerprint(restaurante.id, role, pin_atual)
+        if not hmac.compare_digest(pin_fp, fp_esperado):
+            raise unauthorized_exception
 
         return UserSession(
             role=role,

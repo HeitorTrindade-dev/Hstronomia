@@ -1,6 +1,6 @@
-from typing import List
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from pydantic import model_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 DEFAULT_DEV_SECRET_KEY = "sua-chave-secreta-de-pelo-menos-32-caracteres-para-desenvolvimento"
@@ -9,13 +9,14 @@ DEFAULT_DEV_SECRET_KEY = "sua-chave-secreta-de-pelo-menos-32-caracteres-para-des
 class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     DEBUG: bool = True
+    APP_TIMEZONE: str = "UTC"
 
     # Servidor
     HOST: str = "0.0.0.0"
     PORT: int = 8000
 
     # CORS
-    CORS_ORIGINS: List[str] = ["http://localhost:5173", "http://localhost:3000"]
+    CORS_ORIGINS: list[str] = ["http://localhost:5173", "http://localhost:3000"]
 
     # Banco de Dados PostgreSQL
     POSTGRES_USER: str = "postgres"
@@ -25,21 +26,33 @@ class Settings(BaseSettings):
     POSTGRES_DB: str = "hstronomia"
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/hstronomia"
 
-    # Autenticação e Segurança (JWT)
+    # Autenticação e Segurança (JWT e Bcrypt)
     SECRET_KEY: str = DEFAULT_DEV_SECRET_KEY
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 480
     OPERATIONAL_TOKEN_EXPIRE_MINUTES: int = 120
+    BCRYPT_ROUNDS: int = Field(default=12, ge=4, le=31)
 
-    # Rate Limiting (Autenticação Operacional por PIN)
+    # Rate Limiting (Autenticação Operacional por PIN e Login do Dono)
     OPERATIONAL_RATE_LIMIT_MAX_ATTEMPTS: int = 5
     OPERATIONAL_RATE_LIMIT_WINDOW_SECONDS: int = 300
+    OPERATIONAL_RATE_LIMIT_MAX_KEYS: int = Field(default=10000, ge=100)
 
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
-        extra="ignore"
+        extra="ignore",
     )
+
+    @field_validator("APP_TIMEZONE")
+    @classmethod
+    def validar_app_timezone(cls, value: str) -> str:
+        tz_name = value.strip()
+        try:
+            ZoneInfo(tz_name)
+        except (ZoneInfoNotFoundError, ValueError) as exc:
+            raise ValueError(f"Timezone inválido em APP_TIMEZONE: '{value}'.") from exc
+        return tz_name
 
     @model_validator(mode="after")
     def validar_seguranca_producao(self) -> "Settings":
@@ -53,6 +66,10 @@ class Settings(BaseSettings):
             if self.DEBUG:
                 raise ValueError(
                     "Em produção (ENVIRONMENT=production), DEBUG deve ser False."
+                )
+            if self.BCRYPT_ROUNDS < 12:
+                raise ValueError(
+                    "Em produção (ENVIRONMENT=production), BCRYPT_ROUNDS deve ser no mínimo 12."
                 )
         return self
 

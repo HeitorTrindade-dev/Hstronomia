@@ -1,7 +1,17 @@
 import uuid
 from datetime import datetime
-from typing import Optional
+
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+
+MAX_BCRYPT_PASSWORD_BYTES = 72
+
+
+def _validar_senha_bcrypt(value: str) -> str:
+    if "\x00" in value:
+        raise ValueError("A senha não pode conter caracteres nulos.")
+    if len(value.encode("utf-8")) > MAX_BCRYPT_PASSWORD_BYTES:
+        raise ValueError("A senha não pode exceder 72 bytes.")
+    return value
 
 
 class DonoCreate(BaseModel):
@@ -9,7 +19,7 @@ class DonoCreate(BaseModel):
 
     nome: str = Field(..., min_length=2, max_length=120)
     email: EmailStr
-    senha: str = Field(..., min_length=6, max_length=100)
+    senha: str = Field(..., min_length=6, max_length=72)
 
     @field_validator("nome")
     @classmethod
@@ -26,6 +36,11 @@ class DonoCreate(BaseModel):
     def normalizar_email(cls, value: EmailStr) -> str:
         return str(value).strip().lower()
 
+    @field_validator("senha")
+    @classmethod
+    def validar_senha(cls, value: str) -> str:
+        return _validar_senha_bcrypt(value)
+
 
 class DonoResponse(BaseModel):
     id: uuid.UUID
@@ -40,12 +55,17 @@ class LoginRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     email: EmailStr
-    senha: str = Field(..., min_length=1)
+    senha: str = Field(..., min_length=1, max_length=72)
 
     @field_validator("email")
     @classmethod
     def normalizar_email(cls, value: EmailStr) -> str:
         return str(value).strip().lower()
+
+    @field_validator("senha")
+    @classmethod
+    def validar_senha(cls, value: str) -> str:
+        return _validar_senha_bcrypt(value)
 
 
 class OperacionalLoginRequest(BaseModel):
@@ -75,15 +95,15 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     role: str
-    dono: Optional[DonoResponse] = None
-    restaurante_id: Optional[uuid.UUID] = None
-    restaurante_nome: Optional[str] = None
-    restaurante_slug: Optional[str] = None
+    dono: DonoResponse | None = None
+    restaurante_id: uuid.UUID | None = None
+    restaurante_nome: str | None = None
+    restaurante_slug: str | None = None
 
 
 class AuthMeResponse(BaseModel):
     role: str  # "dono", "garcom" ou "cozinha"
-    dono: Optional[DonoResponse] = None
-    restaurante_id: Optional[uuid.UUID] = None
-    restaurante_nome: Optional[str] = None
-    restaurante_slug: Optional[str] = None
+    dono: DonoResponse | None = None
+    restaurante_id: uuid.UUID | None = None
+    restaurante_nome: str | None = None
+    restaurante_slug: str | None = None
