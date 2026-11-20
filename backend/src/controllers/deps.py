@@ -129,6 +129,17 @@ async def get_current_operacional(
     return current_user
 
 
+async def get_current_atendimento(
+    current_user: Annotated[UserSession, Depends(get_current_user)],
+) -> UserSession:
+    if current_user.role not in ("garcom", "dono"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acesso restrito ao Garçom ou Dono.",
+        )
+    return current_user
+
+
 async def _resolver_restaurante_do_dono(
     dono: Dono,
     session: AsyncSession,
@@ -167,12 +178,11 @@ async def get_dono_restaurante_id(
     return await _resolver_restaurante_do_dono(current_dono, session, restaurante_id)
 
 
-async def get_sessao_restaurante_id(
-    current_user: Annotated[UserSession, Depends(get_current_operacional)],
-    session: Annotated[AsyncSession, Depends(get_db)],
-    restaurante_id: Annotated[uuid.UUID | None, Query()] = None,
+async def _resolver_restaurante_da_sessao(
+    current_user: UserSession,
+    session: AsyncSession,
+    restaurante_id: uuid.UUID | None,
 ) -> uuid.UUID:
-    """Resolve e valida o restaurante_id da sessão atual (Dono, Garçom ou Cozinha)."""
     if current_user.role == "dono" and current_user.dono:
         return await _resolver_restaurante_do_dono(current_user.dono, session, restaurante_id)
 
@@ -187,4 +197,22 @@ async def get_sessao_restaurante_id(
             detail="Acesso negado a este restaurante.",
         )
     return current_user.restaurante_id
+
+
+async def get_sessao_restaurante_id(
+    current_user: Annotated[UserSession, Depends(get_current_operacional)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    restaurante_id: Annotated[uuid.UUID | None, Query()] = None,
+) -> uuid.UUID:
+    """Resolve e valida o restaurante_id da sessão atual (Dono, Garçom ou Cozinha)."""
+    return await _resolver_restaurante_da_sessao(current_user, session, restaurante_id)
+
+
+async def get_atendimento_restaurante_id(
+    current_user: Annotated[UserSession, Depends(get_current_atendimento)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    restaurante_id: Annotated[uuid.UUID | None, Query()] = None,
+) -> uuid.UUID:
+    """Resolve e valida o restaurante_id da sessão de atendimento (Garçom ou Dono)."""
+    return await _resolver_restaurante_da_sessao(current_user, session, restaurante_id)
 
