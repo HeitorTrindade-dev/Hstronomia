@@ -8,6 +8,7 @@ Registro central de todas as mudanças significativas realizadas no projeto por 
 
 | Código | Data | Título | Status | Arquivo |
 | :--- | :--- | :--- | :--- | :--- |
+| **0022** | 2026-11-20 | Fundação de UI, Componentes Base, TopBar Unificada e Orquestração Docker | Concluído | [0022-fundacao-ui-componentes-base-e-docker.md](file:///home/heitor/Documentos/workspace/projetos/pessoais/Hstronomia/auditoria/0022-fundacao-ui-componentes-base-e-docker.md) |
 | **0021** | 2026-11-20 | Design System e Guia de Estilos Frontend | Concluído | [0021-design-system-e-guia-de-estilos-frontend.md](file:///home/heitor/Documentos/workspace/projetos/pessoais/Hstronomia/auditoria/0021-design-system-e-guia-de-estilos-frontend.md) |
 | **0020** | 2026-11-20 | Refinamento de Segurança OWASP, Edição de Restaurante/Comanda e Validações de Schemas | Concluído | [0020-refinamento-seguranca-edicao-restaurante-comanda.md](file:///home/heitor/Documentos/workspace/projetos/pessoais/Hstronomia/auditoria/0020-refinamento-seguranca-edicao-restaurante-comanda.md) |
 | **0019** | 2026-11-20 | Consolidação de Segurança OWASP, Correções de Bugs, Gestão de Itens da Comanda e Melhorias Gerais | Concluído | [0019-consolidacao-seguranca-bugs-comandas-backend.md](file:///home/heitor/Documentos/workspace/projetos/pessoais/Hstronomia/auditoria/0019-consolidacao-seguranca-bugs-comandas-backend.md) |
