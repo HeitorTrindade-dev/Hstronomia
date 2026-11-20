@@ -1,6 +1,6 @@
 import uuid
 from dataclasses import dataclass
-from typing import Annotated, Optional
+from typing import Annotated
 
 from fastapi import Depends, HTTPException, Query, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -19,9 +19,9 @@ security_scheme = HTTPBearer(auto_error=True)
 @dataclass
 class UserSession:
     role: str
-    dono: Optional[Dono] = None
-    restaurante: Optional[Restaurante] = None
-    restaurante_id: Optional[uuid.UUID] = None
+    dono: Dono | None = None
+    restaurante: Restaurante | None = None
+    restaurante_id: uuid.UUID | None = None
 
 
 async def get_current_user(
@@ -214,5 +214,25 @@ async def get_atendimento_restaurante_id(
     restaurante_id: Annotated[uuid.UUID | None, Query()] = None,
 ) -> uuid.UUID:
     """Resolve e valida o restaurante_id da sessão de atendimento (Garçom ou Dono)."""
+    return await _resolver_restaurante_da_sessao(current_user, session, restaurante_id)
+
+
+async def get_current_cozinha_ou_dono(
+    current_user: Annotated[UserSession, Depends(get_current_user)],
+) -> UserSession:
+    if current_user.role not in ("cozinha", "dono"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acesso restrito à Cozinha ou ao Dono.",
+        )
+    return current_user
+
+
+async def get_cozinha_restaurante_id(
+    current_user: Annotated[UserSession, Depends(get_current_cozinha_ou_dono)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    restaurante_id: Annotated[uuid.UUID | None, Query()] = None,
+) -> uuid.UUID:
+    """Resolve e valida o restaurante_id da sessão atual para rotas da Cozinha (Cozinha ou Dono)."""
     return await _resolver_restaurante_da_sessao(current_user, session, restaurante_id)
 
