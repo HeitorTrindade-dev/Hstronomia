@@ -87,3 +87,34 @@ class ItemComandaResponse(BaseModel):
     observacao: str | None
     status: str
     criado_em: datetime
+
+
+MetodoPagamento = Literal["pix", "dinheiro", "cartao_credito", "cartao_debito"]
+
+
+class ComandaFecharRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    metodo_pagamento: MetodoPagamento
+    incluir_taxa_servico: bool = True
+    desconto: Decimal = Field(
+        default=Decimal("0.00"),
+        ge=Decimal("0.00"),
+        max_digits=10,
+        decimal_places=2,
+    )
+
+
+class ComandaPreviaResponse(BaseModel):
+    comanda_id: uuid.UUID
+    restaurante_id: uuid.UUID
+    numero_mesa: int | None
+    identificador: str | None
+    tipo_atendimento: str
+    status: str
+    itens: list[ItemComandaResponse]
+    subtotal: Decimal
+    incluir_taxa_servico: bool
+    taxa_servico: Decimal
+    desconto: Decimal
+    valor_total: Decimal
