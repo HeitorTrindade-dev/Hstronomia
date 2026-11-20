@@ -1,7 +1,6 @@
 import uuid
 from typing import List, Optional
 
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.restaurante import Restaurante
@@ -13,14 +12,10 @@ class RestauranteRepository(BaseRepository[Restaurante]):
         super().__init__(Restaurante, session)
 
     async def get_by_slug(self, slug: str) -> Optional[Restaurante]:
-        stmt = select(Restaurante).where(Restaurante.slug == slug.strip().lower())
-        result = await self.session.execute(stmt)
-        return result.scalar_one_or_none()
+        return await self.get_by(Restaurante.slug, slug.strip().lower())
 
     async def get_by_dono_id(self, dono_id: uuid.UUID) -> List[Restaurante]:
-        stmt = select(Restaurante).where(Restaurante.dono_id == dono_id)
-        result = await self.session.execute(stmt)
-        return list(result.scalars().all())
+        return await self.list_by(Restaurante.dono_id, dono_id)
 
     async def create(
         self,

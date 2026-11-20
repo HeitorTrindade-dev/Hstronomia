@@ -1,6 +1,5 @@
 from typing import Optional
 
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.dono import Dono
@@ -12,9 +11,7 @@ class DonoRepository(BaseRepository[Dono]):
         super().__init__(Dono, session)
 
     async def get_by_email(self, email: str) -> Optional[Dono]:
-        stmt = select(Dono).where(Dono.email == email.strip().lower())
-        result = await self.session.execute(stmt)
-        return result.scalar_one_or_none()
+        return await self.get_by(Dono.email, email.strip().lower())
 
     async def create(self, nome: str, email: str, senha_hash: str) -> Dono:
         dono = Dono(
