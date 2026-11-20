@@ -315,3 +315,163 @@ async def test_dono_com_multiplos_restaurantes_exige_restaurante_id(db_session: 
             assert res_matriz.json() == []
     finally:
         app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_disponibilidade_soft_delete_e_filtro_estrito_garcom(db_session: AsyncSession):
+    dono_a, rest_a, dono_b, _ = await _criar_cenario_dois_restaurantes(db_session)
+
+    token_dono_a = create_access_token({"sub": str(dono_a.id), "email": dono_a.email, "role": "dono"})
+    token_dono_b = create_access_token({"sub": str(dono_b.id), "email": dono_b.email, "role": "dono"})
+    token_garcom_a = create_access_token(
+        {"sub": str(rest_a.id), "restaurante_id": str(rest_a.id), "role": "garcom"}
+    )
+    token_cozinha_a = create_access_token(
+        {"sub": str(rest_a.id), "restaurante_id": str(rest_a.id), "role": "cozinha"}
+    )
+
+    async def override_get_db():
+        yield db_session
+
+    app.dependency_overrides[get_db] = override_get_db
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            headers_a = {"Authorization": f"Bearer {token_dono_a}"}
+            headers_b = {"Authorization": f"Bearer {token_dono_b}"}
+            headers_garcom = {"Authorization": f"Bearer {token_garcom_a}"}
+            headers_cozinha = {"Authorization": f"Bearer {token_cozinha_a}"}
+
+            # Cria 3 itens no restaurante A
+            item_ok = (
+                await client.post(
+                    "/api/v1/itens",
+                    headers=headers_a,
+                    json={"nome": "A - Prato Disponível", "preco": "45.00"},
+                )
+            ).json()
+            item_pausado = (
+                await client.post(
+                    "/api/v1/itens",
+                    headers=headers_a,
+                    json={"nome": "B - Prato Pausado", "preco": "50.00"},
+                )
+            ).json()
+            item_desativado = (
+                await client.post(
+                    "/api/v1/itens",
+                    headers=headers_a,
+                    json={"nome": "C - Prato Desativado", "preco": "55.00"},
+                )
+            ).json()
+
+            # 1. PATCH disponibilidade: pausar e retomar
+            res_pausa = await client.patch(
+                f"/api/v1/itens/{item_pausado['id']}/disponibilidade",
+                headers=headers_a,
+                json={"disponivel": False},
+            )
+            assert res_pausa.status_code == 200
+            assert res_pausa.json()["disponivel"] is False
+            assert res_pausa.json()["ativo"] is True
+
+            # Extra field rejeitado (extra="forbid")
+            assert (
+                await client.patch(
+                    f"/api/v1/itens/{item_pausado['id']}/disponibilidade",
+                    headers=headers_a,
+                    json={"disponivel": True, "ativo": False},
+                )
+            ).status_code == 422
+
+            # BFLA e IDOR no PATCH
+            assert (
+                await client.patch(
+                    f"/api/v1/itens/{item_pausado['id']}/disponibilidade",
+                    headers=headers_garcom,
+                    json={"disponivel": True},
+                )
+            ).status_code == 403
+            assert (
+                await client.patch(
+                    f"/api/v1/itens/{item_pausado['id']}/disponibilidade",
+                    headers=headers_cozinha,
+                    json={"disponivel": True},
+                )
+            ).status_code == 403
+            assert (
+                await client.patch(
+                    f"/api/v1/itens/{item_pausado['id']}/disponibilidade",
+                    headers=headers_b,
+                    json={"disponivel": True},
+                )
+            ).status_code == 404
+
+            # 2. DELETE soft-delete: marca ativo=False e disponivel=False sem apagar registro físico
+            assert (
+                await client.delete(f"/api/v1/itens/{item_desativado['id']}", headers=headers_garcom)
+            ).status_code == 403
+            assert (
+                await client.delete(f"/api/v1/itens/{item_desativado['id']}", headers=headers_b)
+            ).status_code == 404
+
+            res_del = await client.delete(f"/api/v1/itens/{item_desativado['id']}", headers=headers_a)
+            assert res_del.status_code == 200
+            assert res_del.json()["ativo"] is False
+            assert res_del.json()["disponivel"] is False
+
+            # Confirma persistência histórica no banco (sem DELETE físico)
+            repo = ItemRepository(db_session)
+            import uuid
+
+            registro_banco = await repo.get_by_id_and_restaurante(uuid.UUID(item_desativado["id"]), rest_a.id)
+            assert registro_banco is not None
+            assert registro_banco.ativo is False
+
+            # Não permite alterar disponibilidade de item desativado -> 400
+            res_patch_inativo = await client.patch(
+                f"/api/v1/itens/{item_desativado['id']}/disponibilidade",
+                headers=headers_a,
+                json={"disponivel": True},
+            )
+            assert res_patch_inativo.status_code == 400
+
+            # 3. Garçom vê EXCLUSIVAMENTE itens ativo == True e disponivel == True
+            # Mesmo tentando forçar query params incluir_inativos=true / apenas_disponiveis=false
+            res_garcom = await client.get(
+                "/api/v1/itens?incluir_inativos=true&apenas_disponiveis=false",
+                headers=headers_garcom,
+            )
+            assert res_garcom.status_code == 200
+            assert [i["id"] for i in res_garcom.json()] == [item_ok["id"]]
+
+            # Verifica também o método dedicado do repositório para o garçom
+            itens_repo_garcom = await repo.list_disponiveis_para_garcom(rest_a.id)
+            assert [str(i.id) for i in itens_repo_garcom] == [item_ok["id"]]
+
+            # 4. Dono vê ativos (inclusive pausados) por padrão, e todos com incluir_inativos=true
+            res_dono_padrao = await client.get("/api/v1/itens", headers=headers_a)
+            assert res_dono_padrao.status_code == 200
+            assert [i["id"] for i in res_dono_padrao.json()] == [item_ok["id"], item_pausado["id"]]
+
+            res_dono_todos = await client.get("/api/v1/itens?incluir_inativos=true", headers=headers_a)
+            assert res_dono_todos.status_code == 200
+            assert [i["id"] for i in res_dono_todos.json()] == [
+                item_ok["id"],
+                item_pausado["id"],
+                item_desativado["id"],
+            ]
+
+            # 5. Retomando disponibilidade, o item volta a aparecer para o Garçom
+            res_retoma = await client.patch(
+                f"/api/v1/itens/{item_pausado['id']}/disponibilidade",
+                headers=headers_a,
+                json={"disponivel": True},
+            )
+            assert res_retoma.status_code == 200
+            assert res_retoma.json()["disponivel"] is True
+
+            res_garcom_depois = await client.get("/api/v1/itens", headers=headers_garcom)
+            assert res_garcom_depois.status_code == 200
+            assert [i["id"] for i in res_garcom_depois.json()] == [item_ok["id"], item_pausado["id"]]
+    finally:
+        app.dependency_overrides.clear()

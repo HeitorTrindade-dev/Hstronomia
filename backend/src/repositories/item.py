@@ -45,6 +45,22 @@ class ItemRepository(BaseRepository[Item]):
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
+    async def list_disponiveis_para_garcom(
+        self,
+        restaurante_id: uuid.UUID,
+        *,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[Item]:
+        """Retorna exclusivamente itens ativos e disponíveis do restaurante para atendimento do garçom."""
+        return await self.list_by_restaurante(
+            restaurante_id=restaurante_id,
+            apenas_ativos=True,
+            apenas_disponiveis=True,
+            limit=limit,
+            offset=offset,
+        )
+
     async def create(
         self,
         *,
@@ -90,5 +106,36 @@ class ItemRepository(BaseRepository[Item]):
         if disponivel is not None:
             item.disponivel = disponivel
 
+        await self.session.flush()
+        return item
+
+    async def update_disponibilidade(
+        self,
+        *,
+        item_id: uuid.UUID,
+        restaurante_id: uuid.UUID,
+        disponivel: bool,
+    ) -> Item | None:
+        item = await self.get_by_id_and_restaurante(item_id, restaurante_id)
+        if not item:
+            return None
+
+        item.disponivel = disponivel
+        await self.session.flush()
+        return item
+
+    async def soft_delete(
+        self,
+        *,
+        item_id: uuid.UUID,
+        restaurante_id: uuid.UUID,
+    ) -> Item | None:
+        """Desativa o item logicamente (ativo = False) sem exclusão física para preservar histórico."""
+        item = await self.get_by_id_and_restaurante(item_id, restaurante_id)
+        if not item:
+            return None
+
+        item.ativo = False
+        item.disponivel = False
         await self.session.flush()
         return item

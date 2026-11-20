@@ -11,7 +11,12 @@ from src.controllers.deps import (
     get_sessao_restaurante_id,
 )
 from src.core.database import get_db
-from src.schemas.item import ItemCreate, ItemResponse, ItemUpdate
+from src.schemas.item import (
+    ItemCreate,
+    ItemDisponibilidadeUpdate,
+    ItemResponse,
+    ItemUpdate,
+)
 from src.services.item import ItemService
 
 router = APIRouter(prefix="/itens", tags=["Cardápio"])
@@ -28,14 +33,25 @@ async def listar_itens(
     restaurante_id: Annotated[uuid.UUID, Depends(get_sessao_restaurante_id)],
     session: Annotated[AsyncSession, Depends(get_db)],
     incluir_inativos: Annotated[bool, Query()] = False,
+    apenas_disponiveis: Annotated[bool, Query()] = False,
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
 ):
     service = ItemService(session)
+    if current_user.role == "garcom":
+        return await service.listar_itens(
+            restaurante_id=restaurante_id,
+            incluir_inativos=False,
+            apenas_disponiveis=True,
+            limit=limit,
+            offset=offset,
+        )
+
     pode_ver_inativos = incluir_inativos and current_user.role == "dono"
     return await service.listar_itens(
         restaurante_id=restaurante_id,
         incluir_inativos=pode_ver_inativos,
+        apenas_disponiveis=apenas_disponiveis,
         limit=limit,
         offset=offset,
     )
@@ -75,6 +91,48 @@ async def atualizar_item(
         restaurante_id=restaurante_id,
         item_id=item_id,
         data=data,
+    )
+    await session.commit()
+    return item
+
+
+@router.patch(
+    "/{item_id}/disponibilidade",
+    response_model=ItemResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Pausar ou retomar disponibilidade de um item (somente Dono)",
+)
+async def alterar_disponibilidade_item(
+    item_id: uuid.UUID,
+    data: ItemDisponibilidadeUpdate,
+    restaurante_id: Annotated[uuid.UUID, Depends(get_dono_restaurante_id)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+):
+    service = ItemService(session)
+    item = await service.alterar_disponibilidade(
+        restaurante_id=restaurante_id,
+        item_id=item_id,
+        disponivel=data.disponivel,
+    )
+    await session.commit()
+    return item
+
+
+@router.delete(
+    "/{item_id}",
+    response_model=ItemResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Desativar item do cardápio via soft-delete (somente Dono)",
+)
+async def desativar_item(
+    item_id: uuid.UUID,
+    restaurante_id: Annotated[uuid.UUID, Depends(get_dono_restaurante_id)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+):
+    service = ItemService(session)
+    item = await service.desativar_item(
+        restaurante_id=restaurante_id,
+        item_id=item_id,
     )
     await session.commit()
     return item
