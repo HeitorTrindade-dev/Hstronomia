@@ -8,6 +8,7 @@ Registro central de todas as mudanças significativas realizadas no projeto por 
 
 | Código | Data | Título | Status | Arquivo |
 | :--- | :--- | :--- | :--- | :--- |
+| **0017** | 2026-11-20 | Concorrência (Race Conditions) e Regras de Integridade em Comandas e KDS | Concluído | [0017-concorrencia-integridade-comandas-kds.md](file:///home/heitor/Documentos/workspace/projetos/pessoais/Hstronomia/auditoria/0017-concorrencia-integridade-comandas-kds.md) |
 | **0016** | 2026-11-20 | Hardening de Segurança OWASP em Autenticação, Segredos e Headers | Concluído | [0016-hardening-seguranca-owasp-auth.md](file:///home/heitor/Documentos/workspace/projetos/pessoais/Hstronomia/auditoria/0016-hardening-seguranca-owasp-auth.md) |
 | **0015** | 2026-11-20 | Listagem, Detalhamento e Cancelamento de Comandas | Concluído | [0015-listagem-detalhamento-cancelamento-comandas.md](file:///home/heitor/Documentos/workspace/projetos/pessoais/Hstronomia/auditoria/0015-listagem-detalhamento-cancelamento-comandas.md) |
 | **0014** | 2026-11-20 | Endpoints e Service de Gestão de Restaurantes (Onboarding do Dono e PINs) | Concluído | [0014-gestao-restaurantes-endpoints.md](file:///home/heitor/Documentos/workspace/projetos/pessoais/Hstronomia/auditoria/0014-gestao-restaurantes-endpoints.md) |
