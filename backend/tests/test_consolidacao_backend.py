@@ -449,3 +449,154 @@ async def test_reativar_item_desativado_e_timezone_resumo_financeiro(
                 settings.APP_TIMEZONE = tz_original
     finally:
         app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_edicao_restaurante_edicao_comanda_e_validacao_item_update(
+    db_session: AsyncSession,
+):
+    dono_a, rest_a, item_1, _, dono_b, rest_b = await _criar_cenario_consolidado(db_session)
+    headers_dono_a = {
+        "Authorization": f"Bearer {create_access_token({'sub': str(dono_a.id), 'email': dono_a.email, 'role': 'dono'})}"
+    }
+    headers_dono_b = {
+        "Authorization": f"Bearer {create_access_token({'sub': str(dono_b.id), 'email': dono_b.email, 'role': 'dono'})}"
+    }
+    headers_garcom_a = {
+        "Authorization": f"Bearer {create_operational_token(rest_a.id, 'garcom', rest_a.codigo_garcom)}"
+    }
+    headers_cozinha_a = {
+        "Authorization": f"Bearer {create_operational_token(rest_a.id, 'cozinha', rest_a.codigo_cozinha)}"
+    }
+
+    async def override_get_db():
+        yield db_session
+
+    app.dependency_overrides[get_db] = override_get_db
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            # 1. Validação estrita em ItemUpdate: payload vazio {} ou campos obrigatórios nulos -> 422
+            for bad_item_update in (
+                {},
+                {"nome": None},
+                {"preco": None},
+                {"disponivel": None},
+            ):
+                assert (
+                    await client.put(
+                        f"/api/v1/itens/{item_1.id}",
+                        headers=headers_dono_a,
+                        json=bad_item_update,
+                    )
+                ).status_code == 422
+
+            # 2. Edição de dados do Restaurante (PATCH /api/v1/restaurantes/{id})
+            # Conflito de slug com restaurante B -> 409
+            assert (
+                await client.patch(
+                    f"/api/v1/restaurantes/{rest_a.id}",
+                    headers=headers_dono_a,
+                    json={"slug": rest_b.slug},
+                )
+            ).status_code == 409
+
+            # BFLA (Garçom -> 403) e IDOR (Dono B -> 404)
+            assert (
+                await client.patch(
+                    f"/api/v1/restaurantes/{rest_a.id}",
+                    headers=headers_garcom_a,
+                    json={"nome": "Hack"},
+                )
+            ).status_code == 403
+            assert (
+                await client.patch(
+                    f"/api/v1/restaurantes/{rest_a.id}",
+                    headers=headers_dono_b,
+                    json={"nome": "Hack"},
+                )
+            ).status_code == 404
+
+            # Atualização legítima de nome e slug
+            res_rest_patch = await client.patch(
+                f"/api/v1/restaurantes/{rest_a.id}",
+                headers=headers_dono_a,
+                json={"nome": "  Cantina Alpha Renovada  ", "slug": "  Cantina-Alpha-Renovada  "},
+            )
+            assert res_rest_patch.status_code == 200
+            assert res_rest_patch.json()["nome"] == "Cantina Alpha Renovada"
+            assert res_rest_patch.json()["slug"] == "cantina-alpha-renovada"
+
+            # 3. Edição / Troca de Mesa de Comanda (PATCH /api/v1/comandas/{id})
+            c_mesa_10 = (
+                await client.post(
+                    "/api/v1/comandas",
+                    headers=headers_garcom_a,
+                    json={"numero_mesa": 10, "identificador": "Mesa 10"},
+                )
+            ).json()
+            c_mesa_11 = (
+                await client.post(
+                    "/api/v1/comandas",
+                    headers=headers_garcom_a,
+                    json={"numero_mesa": 11, "identificador": "Mesa 11"},
+                )
+            ).json()
+
+            # Conflito ao tentar mover Mesa 10 para a Mesa 11 já ocupada -> 409
+            assert (
+                await client.patch(
+                    f"/api/v1/comandas/{c_mesa_10['id']}",
+                    headers=headers_garcom_a,
+                    json={"numero_mesa": 11},
+                )
+            ).status_code == 409
+
+            # BFLA (Cozinha -> 403) e IDOR (Dono B -> 404)
+            assert (
+                await client.patch(
+                    f"/api/v1/comandas/{c_mesa_10['id']}",
+                    headers=headers_cozinha_a,
+                    json={"numero_mesa": 15},
+                )
+            ).status_code == 403
+            assert (
+                await client.patch(
+                    f"/api/v1/comandas/{c_mesa_10['id']}",
+                    headers=headers_dono_b,
+                    json={"numero_mesa": 15},
+                )
+            ).status_code == 404
+
+            # Troca legítima da Mesa 10 para a Mesa 15 e atualização do identificador
+            res_troca = await client.patch(
+                f"/api/v1/comandas/{c_mesa_10['id']}",
+                headers=headers_garcom_a,
+                json={"numero_mesa": 15, "identificador": "  Mesa 15 - Família  "},
+            )
+            assert res_troca.status_code == 200
+            assert res_troca.json()["numero_mesa"] == 15
+            assert res_troca.json()["identificador"] == "Mesa 15 - Família"
+
+            # Conversão para viagem exige remover numero_mesa (consistência cruzada)
+            assert (
+                await client.patch(
+                    f"/api/v1/comandas/{c_mesa_11['id']}",
+                    headers=headers_garcom_a,
+                    json={"tipo_atendimento": "viagem"},
+                )
+            ).status_code == 400
+
+            res_conv = await client.patch(
+                f"/api/v1/comandas/{c_mesa_11['id']}",
+                headers=headers_garcom_a,
+                json={
+                    "tipo_atendimento": "viagem",
+                    "numero_mesa": None,
+                    "identificador": "Viagem - Cliente Mesa 11",
+                },
+            )
+            assert res_conv.status_code == 200
+            assert res_conv.json()["tipo_atendimento"] == "viagem"
+            assert res_conv.json()["numero_mesa"] is None
+    finally:
+        app.dependency_overrides.clear()

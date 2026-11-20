@@ -8,6 +8,7 @@ Registro central de todas as mudanças significativas realizadas no projeto por 
 
 | Código | Data | Título | Status | Arquivo |
 | :--- | :--- | :--- | :--- | :--- |
+| **0020** | 2026-11-20 | Refinamento de Segurança OWASP, Edição de Restaurante/Comanda e Validações de Schemas | Concluído | [0020-refinamento-seguranca-edicao-restaurante-comanda.md](file:///home/heitor/Documentos/workspace/projetos/pessoais/Hstronomia/auditoria/0020-refinamento-seguranca-edicao-restaurante-comanda.md) |
 | **0019** | 2026-11-20 | Consolidação de Segurança OWASP, Correções de Bugs, Gestão de Itens da Comanda e Melhorias Gerais | Concluído | [0019-consolidacao-seguranca-bugs-comandas-backend.md](file:///home/heitor/Documentos/workspace/projetos/pessoais/Hstronomia/auditoria/0019-consolidacao-seguranca-bugs-comandas-backend.md) |
 | **0018** | 2026-11-20 | Blindagem Multi-Tenant no BaseRepository contra IDOR Acidental | Concluído | [0018-blindagem-multitenant-repositories.md](file:///home/heitor/Documentos/workspace/projetos/pessoais/Hstronomia/auditoria/0018-blindagem-multitenant-repositories.md) |
 | **0017** | 2026-11-20 | Concorrência (Race Conditions) e Regras de Integridade em Comandas e KDS | Concluído | [0017-concorrencia-integridade-comandas-kds.md](file:///home/heitor/Documentos/workspace/projetos/pessoais/Hstronomia/auditoria/0017-concorrencia-integridade-comandas-kds.md) |
