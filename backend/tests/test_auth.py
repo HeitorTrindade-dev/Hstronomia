@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.database import get_db
 from src.core.security import hash_password, verify_password, create_access_token, decode_access_token
 from src.main import app
+from src.repositories.restaurante import RestauranteRepository
 
 
 def test_password_hashing():
@@ -72,14 +73,76 @@ async def test_auth_endpoints_flow(db_session: AsyncSession):
         assert data_login["role"] == "dono"
         token = data_login["access_token"]
 
-        # 5. Rota protegida /api/v1/auth/me com token
+        # 5. Rota protegida /api/v1/auth/me com token de dono
         headers = {"Authorization": f"Bearer {token}"}
         res_me = await client.get("/api/v1/auth/me", headers=headers)
         assert res_me.status_code == 200
-        assert res_me.json()["email"] == "roberto@restaurante.com"
+        me_data = res_me.json()
+        assert me_data["role"] == "dono"
+        assert me_data["dono"]["email"] == "roberto@restaurante.com"
 
         # 6. Rota protegida sem token deve falhar
         res_me_unauth = await client.get("/api/v1/auth/me")
         assert res_me_unauth.status_code in (401, 403)
+
+        # 7. Criar restaurante no banco para testar logins operacionais
+        import uuid
+        dono_id = uuid.UUID(data_cad["id"])
+        restaurante_repo = RestauranteRepository(db_session)
+        restaurante = await restaurante_repo.create(
+            dono_id=dono_id,
+            nome="Pizzaria Bella",
+            slug="pizzaria-bella",
+            codigo_garcom="1234",
+            codigo_cozinha="5678",
+        )
+        await db_session.commit()
+
+        # 8. Login operacional com PIN inválido (401 com erro genérico)
+        res_op_err = await client.post(
+            "/api/v1/auth/operacional",
+            json={"slug": "pizzaria-bella", "pin": "9999"},
+        )
+        assert res_op_err.status_code == 401
+        assert res_op_err.json()["detail"] == "Credenciais inválidas."
+
+        # 9. Login operacional Garçom (sucesso)
+        res_garcom = await client.post(
+            "/api/v1/auth/operacional",
+            json={"slug": "pizzaria-bella", "pin": "1234"},
+        )
+        assert res_garcom.status_code == 200
+        data_garcom = res_garcom.json()
+        assert data_garcom["role"] == "garcom"
+        assert data_garcom["restaurante_slug"] == "pizzaria-bella"
+        token_garcom = data_garcom["access_token"]
+
+        # 10. Garçom chamando /api/v1/auth/me
+        headers_garcom = {"Authorization": f"Bearer {token_garcom}"}
+        res_me_garcom = await client.get("/api/v1/auth/me", headers=headers_garcom)
+        assert res_me_garcom.status_code == 200
+        me_garcom = res_me_garcom.json()
+        assert me_garcom["role"] == "garcom"
+        assert me_garcom["dono"] is None
+        assert me_garcom["restaurante_slug"] == "pizzaria-bella"
+
+        # 11. Login operacional Cozinha (sucesso)
+        res_cozinha = await client.post(
+            "/api/v1/auth/operacional",
+            json={"slug": "pizzaria-bella", "pin": "5678"},
+        )
+        assert res_cozinha.status_code == 200
+        data_cozinha = res_cozinha.json()
+        assert data_cozinha["role"] == "cozinha"
+        token_cozinha = data_cozinha["access_token"]
+
+        # 12. Cozinha chamando /api/v1/auth/me
+        headers_cozinha = {"Authorization": f"Bearer {token_cozinha}"}
+        res_me_cozinha = await client.get("/api/v1/auth/me", headers=headers_cozinha)
+        assert res_me_cozinha.status_code == 200
+        me_cozinha = res_me_cozinha.json()
+        assert me_cozinha["role"] == "cozinha"
+        assert me_cozinha["dono"] is None
+        assert me_cozinha["restaurante_slug"] == "pizzaria-bella"
 
     app.dependency_overrides.clear()

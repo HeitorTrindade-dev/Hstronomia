@@ -30,15 +30,18 @@ Implementação da Issue #5: camada de autenticação segura para proprietários
    - `obter_dono_por_id`: busca de perfil por UUID.
 
 4. **Injeção de Dependência e RBAC (`backend/src/controllers/deps.py`)**:
-   - `get_current_dono`: intercepta Bearer token via `HTTPBearer`, valida assinatura/expiração, restringe `role == "dono"` e injeta o objeto `Dono` autenticado.
+   - `get_current_user`: intercepta Bearer token via `HTTPBearer`, valida assinatura/expiração e resolve a identidade para sessão polimórfica (`UserSession`) com suporte a `dono`, `garcom` e `cozinha`.
+   - `get_current_dono`: valida se `role == "dono"` e injeta o objeto `Dono` autenticado.
+   - `get_current_operacional`: valida acesso para funções operacionais ou dono.
 
 5. **Controllers (`backend/src/controllers/v1/auth.py`)**:
    - `POST /api/v1/auth/cadastrar` (status 201).
-   - `POST /api/v1/auth/login` (status 200, retorna JWT).
-   - `GET /api/v1/auth/me` (status 200, rota protegida).
+   - `POST /api/v1/auth/login` (status 200, retorna JWT do Dono).
+   - `POST /api/v1/auth/operacional` (status 200, autenticação por PIN via slug para Garçom e Cozinha).
+   - `GET /api/v1/auth/me` (status 200, rota unificada que responde tanto para `Dono` quanto para sessões operacionais sem usuário nominal).
 
 6. **Testes Automatizados (`backend/tests/test_auth.py`)**:
-   - 8/8 testes cobrindo hash, JWT, cadastro com sucesso, bloqueio de e-mail duplicado, login com falha/sucesso e rota protegida (100% aprovados).
+   - Testes cobrindo hash, JWT, cadastro com sucesso, bloqueio de e-mail duplicado, login Dono (sucesso/falha), login operacional por PIN (Garçom/Cozinha) e `/me` para todos os papéis (100% aprovados).
 
 ---
 
