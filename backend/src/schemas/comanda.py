@@ -83,6 +83,31 @@ class ItemComandaCreate(BaseModel):
         return limpa or None
 
 
+class ItemComandaUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    quantidade: StrictInt | None = Field(default=None, ge=1, le=999)
+    observacao: str | None = Field(default=None, max_length=500)
+
+    @field_validator("observacao")
+    @classmethod
+    def normalizar_observacao(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        if "\x00" in value:
+            raise ValueError("A observação não pode conter caracteres nulos.")
+        limpa = value.strip()
+        return limpa or None
+
+    @model_validator(mode="after")
+    def validar_campos_atualizacao(self) -> "ItemComandaUpdate":
+        if not self.model_fields_set:
+            raise ValueError("Informe ao menos um campo para atualização.")
+        if "quantidade" in self.model_fields_set and self.quantidade is None:
+            raise ValueError("O campo 'quantidade' não pode ser nulo.")
+        return self
+
+
 class ItemComandaResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

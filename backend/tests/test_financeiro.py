@@ -14,7 +14,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from alembic import command
 from src.core.database import Base, get_db
-from src.core.security import create_access_token, hash_password
+from src.core.security import (
+    create_access_token,
+    create_operational_token,
+    hash_password,
+)
 from src.main import app
 from src.repositories.comanda import ComandaRepository
 from src.repositories.despesa import DespesaRepository
@@ -61,9 +65,8 @@ def _headers_dono(dono) -> dict[str, str]:
 
 
 def _headers_operacional(restaurante, role: str) -> dict[str, str]:
-    token = create_access_token(
-        {"sub": str(restaurante.id), "restaurante_id": str(restaurante.id), "role": role}
-    )
+    pin = restaurante.codigo_garcom if role == "garcom" else restaurante.codigo_cozinha
+    token = create_operational_token(restaurante.id, role, pin)
     return {"Authorization": f"Bearer {token}"}
 
 
@@ -888,11 +891,15 @@ def test_alembic_migration_0004_estrutura_e_cadeia():
     heads = script.get_heads()
     assert len(heads) == 1
     head_rev = heads[0]
-    assert head_rev == "0004_criar_tabela_despesa"
+    assert head_rev == "0005_indice_unico_mesa_aberta"
 
-    rev_obj = script.get_revision(head_rev)
-    assert rev_obj is not None
-    assert rev_obj.down_revision == "0003_comanda_item_comanda"
+    rev_0004 = script.get_revision("0004_criar_tabela_despesa")
+    assert rev_0004 is not None
+    assert rev_0004.down_revision == "0003_comanda_item_comanda"
+
+    rev_0005 = script.get_revision(head_rev)
+    assert rev_0005 is not None
+    assert rev_0005.down_revision == "0004_criar_tabela_despesa"
 
     # Verifica tabela e colunas no Base.metadata
     assert "despesa" in Base.metadata.tables
@@ -936,6 +943,10 @@ def test_alembic_migration_0004_estrutura_e_cadeia():
     cfg_down = Config(str(backend_dir / "alembic.ini"))
     cfg_down.set_main_option("script_location", str(backend_dir / "alembic"))
     with contextlib.redirect_stdout(down_buf):
-        command.downgrade(cfg_down, f"{head_rev}:0003_comanda_item_comanda", sql=True)
+        command.downgrade(
+            cfg_down,
+            "0004_criar_tabela_despesa:0003_comanda_item_comanda",
+            sql=True,
+        )
     down_sql = down_buf.getvalue()
     assert "DROP TABLE despesa" in down_sql

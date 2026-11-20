@@ -2,10 +2,12 @@ import logging
 import uuid
 from datetime import UTC, date, datetime, time
 from decimal import ROUND_HALF_UP, Decimal
+from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.core.config import settings
 from src.models.despesa import Despesa
 from src.repositories.comanda import ComandaRepository
 from src.repositories.despesa import DespesaRepository
@@ -176,13 +178,14 @@ class FinanceiroService:
     ) -> ResumoFinanceiroResponse:
         self._validar_periodo(data_inicio, data_fim)
 
+        app_tz = ZoneInfo(settings.APP_TIMEZONE)
         inicio_dt = (
-            datetime.combine(data_inicio, time.min, tzinfo=UTC)
+            datetime.combine(data_inicio, time.min, tzinfo=app_tz).astimezone(UTC)
             if data_inicio is not None
             else None
         )
         fim_dt = (
-            datetime.combine(data_fim, time.max, tzinfo=UTC)
+            datetime.combine(data_fim, time.max, tzinfo=app_tz).astimezone(UTC)
             if data_fim is not None
             else None
         )

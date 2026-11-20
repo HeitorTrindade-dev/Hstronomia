@@ -3,7 +3,11 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.database import get_db
-from src.core.security import create_access_token, hash_password
+from src.core.security import (
+    create_access_token,
+    create_operational_token,
+    hash_password,
+)
 from src.main import app
 from src.repositories.dono import DonoRepository
 
@@ -162,12 +166,10 @@ async def test_restaurante_validacoes_schema_rbac_e_idor(db_session: AsyncSessio
                 )
             ).json()
 
-            token_garcom = create_access_token(
-                {
-                    "sub": rest_a["id"],
-                    "restaurante_id": rest_a["id"],
-                    "role": "garcom",
-                }
+            token_garcom = create_operational_token(
+                rest_a["id"],
+                "garcom",
+                rest_a["codigo_garcom"],
             )
             headers_garcom = {"Authorization": f"Bearer {token_garcom}"}
 

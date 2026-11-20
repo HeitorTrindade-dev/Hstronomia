@@ -14,6 +14,7 @@ from src.core.database import get_db
 from src.schemas.item import (
     ItemCreate,
     ItemDisponibilidadeUpdate,
+    ItemReativarRequest,
     ItemResponse,
     ItemUpdate,
 )
@@ -133,6 +134,29 @@ async def desativar_item(
     item = await service.desativar_item(
         restaurante_id=restaurante_id,
         item_id=item_id,
+    )
+    await session.commit()
+    return item
+
+
+@router.patch(
+    "/{item_id}/reativar",
+    response_model=ItemResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Reativar item do cardápio previamente desativado via soft-delete (somente Dono)",
+)
+async def reativar_item(
+    item_id: uuid.UUID,
+    restaurante_id: Annotated[uuid.UUID, Depends(get_dono_restaurante_id)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    data: ItemReativarRequest | None = None,
+):
+    service = ItemService(session)
+    disponivel = data.disponivel if data is not None else True
+    item = await service.reativar_item(
+        restaurante_id=restaurante_id,
+        item_id=item_id,
+        disponivel=disponivel,
     )
     await session.commit()
     return item

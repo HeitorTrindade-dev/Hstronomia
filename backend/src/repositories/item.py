@@ -145,3 +145,20 @@ class ItemRepository(TenantBaseRepository[Item]):
         item.disponivel = False
         await self.session.flush()
         return item
+
+    async def reativar(
+        self,
+        *,
+        item_id: uuid.UUID,
+        restaurante_id: uuid.UUID,
+        disponivel: bool = True,
+    ) -> Item | None:
+        """Reativa um item desativado via soft-delete (ativo = True)."""
+        item = await self.get_by_id_and_restaurante(item_id, restaurante_id)
+        if not item:
+            return None
+
+        item.ativo = True
+        item.disponivel = disponivel
+        await self.session.flush()
+        return item

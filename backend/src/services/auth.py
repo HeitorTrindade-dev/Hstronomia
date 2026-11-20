@@ -3,6 +3,7 @@ import uuid
 from datetime import timedelta
 
 from fastapi import HTTPException, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.config import settings
@@ -39,11 +40,18 @@ class AuthService:
             )
 
         senha_hasheada = hash_password(data.senha)
-        dono = await self.dono_repo.create(
-            nome=data.nome,
-            email=data.email,
-            senha_hash=senha_hasheada,
-        )
+        try:
+            dono = await self.dono_repo.create(
+                nome=data.nome,
+                email=data.email,
+                senha_hash=senha_hasheada,
+            )
+        except IntegrityError:
+            await self.session.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="E-mail já cadastrado no sistema.",
+            ) from None
         return dono
 
     async def autenticar_dono(self, data: LoginRequest) -> TokenResponse:

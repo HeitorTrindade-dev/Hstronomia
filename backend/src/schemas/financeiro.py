@@ -20,6 +20,8 @@ class DespesaCreate(BaseModel):
     @field_validator("descricao")
     @classmethod
     def validar_descricao(cls, value: str) -> str:
+        if "\x00" in value:
+            raise ValueError("A descrição da despesa não pode conter caracteres nulos.")
         descricao_limpa = value.strip()
         if len(descricao_limpa) < 2:
             raise ValueError("A descrição da despesa deve ter pelo menos 2 caracteres.")
@@ -39,6 +41,8 @@ class DespesaUpdate(BaseModel):
     def validar_descricao(cls, value: str | None) -> str | None:
         if value is None:
             return None
+        if "\x00" in value:
+            raise ValueError("A descrição da despesa não pode conter caracteres nulos.")
         descricao_limpa = value.strip()
         if len(descricao_limpa) < 2:
             raise ValueError("A descrição da despesa deve ter pelo menos 2 caracteres.")

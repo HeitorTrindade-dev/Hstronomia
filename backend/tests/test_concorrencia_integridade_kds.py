@@ -7,7 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.database import get_db
-from src.core.security import create_access_token, hash_password
+from src.core.security import create_operational_token, hash_password
 from src.main import app
 from src.repositories.comanda import ComandaRepository
 from src.repositories.dono import DonoRepository
@@ -48,9 +48,7 @@ async def test_indice_unico_parcial_mesa_aberta_e_validacao_cruzada_tipo_atendim
 ):
     _, rest, _ = await _criar_cenario_integridade(db_session)
     rest_id = rest.id
-    token_garcom = create_access_token(
-        {"sub": str(rest_id), "restaurante_id": str(rest_id), "role": "garcom"}
-    )
+    token_garcom = create_operational_token(rest_id, "garcom", rest.codigo_garcom)
     headers_garcom = {"Authorization": f"Bearer {token_garcom}"}
 
     # 1. Índice único parcial no banco: bloqueia 2 abertas na mesma mesa, mas permite após fechar/cancelar
@@ -131,12 +129,8 @@ async def test_indice_unico_parcial_mesa_aberta_e_validacao_cruzada_tipo_atendim
 @pytest.mark.asyncio
 async def test_kds_filtro_pronto_e_entrega_pelo_garcom(db_session: AsyncSession):
     _, rest, item = await _criar_cenario_integridade(db_session)
-    token_garcom = create_access_token(
-        {"sub": str(rest.id), "restaurante_id": str(rest.id), "role": "garcom"}
-    )
-    token_cozinha = create_access_token(
-        {"sub": str(rest.id), "restaurante_id": str(rest.id), "role": "cozinha"}
-    )
+    token_garcom = create_operational_token(rest.id, "garcom", rest.codigo_garcom)
+    token_cozinha = create_operational_token(rest.id, "cozinha", rest.codigo_cozinha)
 
     async def override_get_db():
         yield db_session

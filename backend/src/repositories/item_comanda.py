@@ -152,3 +152,21 @@ class ItemComandaRepository(TenantBaseRepository[ItemComanda]):
 
         await self.session.flush()
         return item_comanda
+
+    async def delete_by_id_and_restaurante(
+        self,
+        *,
+        item_comanda_id: uuid.UUID,
+        restaurante_id: uuid.UUID,
+    ) -> bool:
+        """Remove um item de comanda após validar que ele pertence ao restaurante."""
+        item_comanda = await self.get_by_id_and_restaurante(
+            item_comanda_id,
+            restaurante_id,
+        )
+        if not item_comanda:
+            return False
+
+        await self.session.delete(item_comanda)
+        await self.session.flush()
+        return True

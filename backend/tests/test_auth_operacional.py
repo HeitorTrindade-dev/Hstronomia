@@ -15,7 +15,12 @@ from src.controllers.deps import (
 from src.core.config import settings
 from src.core.database import get_db
 from src.core.rate_limit import SlidingWindowRateLimiter
-from src.core.security import create_access_token, decode_access_token, hash_password
+from src.core.security import (
+    create_access_token,
+    create_operational_token,
+    decode_access_token,
+    hash_password,
+)
 from src.main import app
 from src.models.dono import Dono
 from src.repositories.dono import DonoRepository
@@ -221,15 +226,14 @@ async def test_dependencias_autorizacao_garcom_cozinha_dono(db_session: AsyncSes
         return {"dono_id": str(current_dono.id)}
 
     token_dono = create_access_token({"sub": str(dono.id), "email": dono.email, "role": "dono"})
-    token_garcom = create_access_token(
-        {"sub": str(restaurante.id), "restaurante_id": str(restaurante.id), "role": "garcom"}
-    )
-    token_cozinha = create_access_token(
-        {"sub": str(restaurante.id), "restaurante_id": str(restaurante.id), "role": "cozinha"}
-    )
+    token_garcom = create_operational_token(restaurante.id, "garcom", restaurante.codigo_garcom)
+    token_cozinha = create_operational_token(restaurante.id, "cozinha", restaurante.codigo_cozinha)
     token_garcom_sem_restaurante_id = create_access_token({"sub": str(restaurante.id), "role": "garcom"})
     token_garcom_mismatch = create_access_token(
         {"sub": str(restaurante.id), "restaurante_id": str(uuid.uuid4()), "role": "garcom"}
+    )
+    token_garcom_sem_pin_fp = create_access_token(
+        {"sub": str(restaurante.id), "restaurante_id": str(restaurante.id), "role": "garcom"}
     )
 
     async with AsyncClient(transport=ASGITransport(app=test_app), base_url="http://test") as client:
@@ -254,10 +258,13 @@ async def test_dependencias_autorizacao_garcom_cozinha_dono(db_session: AsyncSes
         assert (await client.get("/rota-garcom", headers={"Authorization": f"Bearer {token_dono}"})).status_code == 403
         assert (await client.get("/rota-cozinha", headers={"Authorization": f"Bearer {token_dono}"})).status_code == 403
 
-        # Tokens operacionais malformados (sem restaurante_id ou com divergência) -> 401
+        # Tokens operacionais malformados (sem restaurante_id, divergência ou sem pin_fp) -> 401
         assert (
             await client.get("/rota-garcom", headers={"Authorization": f"Bearer {token_garcom_sem_restaurante_id}"})
         ).status_code == 401
         assert (
             await client.get("/rota-garcom", headers={"Authorization": f"Bearer {token_garcom_mismatch}"})
+        ).status_code == 401
+        assert (
+            await client.get("/rota-garcom", headers={"Authorization": f"Bearer {token_garcom_sem_pin_fp}"})
         ).status_code == 401

@@ -1,6 +1,7 @@
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
-from src.core.database import Base, async_session_factory, get_db
+
+from src.core.database import Base, get_db
 
 
 def test_base_metadata_exists():
