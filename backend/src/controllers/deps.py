@@ -2,7 +2,7 @@ import uuid
 from dataclasses import dataclass
 from typing import Annotated, Optional
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Query, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -127,4 +127,64 @@ async def get_current_operacional(
             detail="Acesso não autorizado para esta operação.",
         )
     return current_user
+
+
+async def _resolver_restaurante_do_dono(
+    dono: Dono,
+    session: AsyncSession,
+    restaurante_id: uuid.UUID | None,
+) -> uuid.UUID:
+    restaurante_repo = RestauranteRepository(session)
+    restaurantes = await restaurante_repo.get_by_dono_id(dono.id)
+
+    if restaurante_id is not None:
+        if not any(r.id == restaurante_id for r in restaurantes):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Acesso negado a este restaurante.",
+            )
+        return restaurante_id
+
+    if len(restaurantes) == 0:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Nenhum restaurante cadastrado para este dono.",
+        )
+    if len(restaurantes) > 1:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Informe o restaurante_id pois há múltiplos restaurantes cadastrados.",
+        )
+    return restaurantes[0].id
+
+
+async def get_dono_restaurante_id(
+    current_dono: Annotated[Dono, Depends(get_current_dono)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    restaurante_id: Annotated[uuid.UUID | None, Query()] = None,
+) -> uuid.UUID:
+    """Resolve e valida o restaurante_id pertencente ao Dono autenticado (proteção IDOR)."""
+    return await _resolver_restaurante_do_dono(current_dono, session, restaurante_id)
+
+
+async def get_sessao_restaurante_id(
+    current_user: Annotated[UserSession, Depends(get_current_operacional)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    restaurante_id: Annotated[uuid.UUID | None, Query()] = None,
+) -> uuid.UUID:
+    """Resolve e valida o restaurante_id da sessão atual (Dono, Garçom ou Cozinha)."""
+    if current_user.role == "dono" and current_user.dono:
+        return await _resolver_restaurante_do_dono(current_user.dono, session, restaurante_id)
+
+    if not current_user.restaurante_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Sessão operacional sem restaurante vinculado.",
+        )
+    if restaurante_id is not None and restaurante_id != current_user.restaurante_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acesso negado a este restaurante.",
+        )
+    return current_user.restaurante_id
 

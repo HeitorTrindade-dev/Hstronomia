@@ -10,6 +10,7 @@ from src.core.database import Base
 
 if TYPE_CHECKING:
     from src.models.dono import Dono
+    from src.models.item import Item
 
 
 class Restaurante(Base):
@@ -37,3 +38,8 @@ class Restaurante(Base):
     )
 
     dono: Mapped["Dono"] = relationship("Dono", back_populates="restaurantes")
+    itens: Mapped[list["Item"]] = relationship(
+        "Item",
+        back_populates="restaurante",
+        cascade="all, delete-orphan",
+    )
