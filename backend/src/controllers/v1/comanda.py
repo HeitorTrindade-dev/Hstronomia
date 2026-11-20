@@ -13,6 +13,7 @@ from src.schemas.comanda import (
     ComandaFecharRequest,
     ComandaPreviaResponse,
     ComandaResponse,
+    ComandaUpdate,
     ItemComandaCreate,
     ItemComandaResponse,
     ItemComandaUpdate,
@@ -79,6 +80,28 @@ async def abrir_comanda(
 ):
     service = ComandaService(session)
     comanda = await service.abrir_comanda(restaurante_id=restaurante_id, data=data)
+    await session.commit()
+    return comanda
+
+
+@router.patch(
+    "/{comanda_id}",
+    response_model=ComandaResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Atualizar mesa, identificador ou tipo de atendimento de comanda aberta (Garçom ou Dono)",
+)
+async def atualizar_comanda(
+    comanda_id: uuid.UUID,
+    data: ComandaUpdate,
+    restaurante_id: Annotated[uuid.UUID, Depends(get_atendimento_restaurante_id)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+):
+    service = ComandaService(session)
+    comanda = await service.atualizar_comanda(
+        restaurante_id=restaurante_id,
+        comanda_id=comanda_id,
+        data=data,
+    )
     await session.commit()
     return comanda
 

@@ -66,3 +66,23 @@ class RestauranteRepository(BaseRepository[Restaurante]):
 
         await self.session.flush()
         return restaurante
+
+    async def update_dados(
+        self,
+        *,
+        restaurante_id: uuid.UUID,
+        dono_id: uuid.UUID,
+        nome: str | None = None,
+        slug: str | None = None,
+    ) -> Restaurante | None:
+        restaurante = await self.get_by_id(restaurante_id)
+        if not restaurante or restaurante.dono_id != dono_id:
+            return None
+
+        if nome is not None:
+            restaurante.nome = nome.strip()
+        if slug is not None:
+            restaurante.slug = slug.strip().lower()
+
+        await self.session.flush()
+        return restaurante

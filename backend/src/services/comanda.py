@@ -17,6 +17,7 @@ from src.schemas.comanda import (
     ComandaDetalheResponse,
     ComandaFecharRequest,
     ComandaPreviaResponse,
+    ComandaUpdate,
     ItemComandaCreate,
     ItemComandaResponse,
     ItemComandaUpdate,
@@ -181,6 +182,108 @@ class ComandaService:
             comanda.numero_mesa,
         )
         return comanda
+
+    async def atualizar_comanda(
+        self,
+        restaurante_id: uuid.UUID,
+        comanda_id: uuid.UUID,
+        data: ComandaUpdate,
+    ) -> Comanda:
+        comanda = await self.comanda_repo.get_by_id_and_restaurante(
+            comanda_id,
+            restaurante_id,
+        )
+        if not comanda:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Comanda não encontrada.",
+            )
+
+        if comanda.status != "aberta":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Apenas comandas abertas podem ser editadas.",
+            )
+
+        novo_tipo = (
+            data.tipo_atendimento
+            if "tipo_atendimento" in data.model_fields_set and data.tipo_atendimento is not None
+            else comanda.tipo_atendimento
+        )
+        nova_mesa = (
+            data.numero_mesa
+            if "numero_mesa" in data.model_fields_set
+            else comanda.numero_mesa
+        )
+        novo_identificador = (
+            data.identificador
+            if "identificador" in data.model_fields_set
+            else comanda.identificador
+        )
+
+        if nova_mesa is None and novo_identificador is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="A comanda deve manter um número de mesa ou um identificador.",
+            )
+        if novo_tipo == "mesa" and nova_mesa is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Para atendimento em mesa, o número da mesa é obrigatório.",
+            )
+        if novo_tipo in ("balcao", "viagem") and nova_mesa is not None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Pedidos de balcão ou viagem não devem informar número de mesa.",
+            )
+
+        if nova_mesa is not None and nova_mesa != comanda.numero_mesa:
+            try:
+                comanda_existente = await self.comanda_repo.get_aberta_por_mesa(
+                    restaurante_id,
+                    nova_mesa,
+                )
+            except MultipleResultsFound:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Já existe uma comanda aberta para esta mesa.",
+                ) from None
+
+            if comanda_existente is not None and comanda_existente.id != comanda.id:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Já existe uma comanda aberta para esta mesa.",
+                )
+
+        try:
+            atualizada = await self.comanda_repo.update_atendimento(
+                comanda_id=comanda.id,
+                restaurante_id=restaurante_id,
+                numero_mesa=nova_mesa,
+                identificador=novo_identificador,
+                tipo_atendimento=novo_tipo,
+            )
+        except IntegrityError:
+            await self.session.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Já existe uma comanda aberta para esta mesa.",
+            ) from None
+
+        if not atualizada:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Comanda não encontrada.",
+            )
+
+        logger.info(
+            "Comanda atualizada (restaurante_id=%s, comanda_id=%s, tipo=%s, mesa=%s)",
+            restaurante_id,
+            atualizada.id,
+            atualizada.tipo_atendimento,
+            atualizada.numero_mesa,
+        )
+        return atualizada
 
     async def adicionar_item(
         self,

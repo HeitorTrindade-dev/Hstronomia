@@ -56,6 +56,46 @@ class RestauranteCreate(BaseModel):
         return self
 
 
+class RestauranteUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    nome: str | None = Field(default=None, min_length=2, max_length=120)
+    slug: str | None = Field(default=None, min_length=2, max_length=100)
+
+    @field_validator("nome")
+    @classmethod
+    def validar_nome(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        if "\x00" in value:
+            raise ValueError("O nome não pode conter caracteres nulos.")
+        limpo = value.strip()
+        if len(limpo) < 2:
+            raise ValueError("O nome do restaurante deve ter pelo menos 2 caracteres.")
+        return limpo
+
+    @field_validator("slug")
+    @classmethod
+    def validar_slug(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalizado = value.strip().lower()
+        if len(normalizado) < 2 or not SLUG_PATTERN.match(normalizado):
+            raise ValueError(
+                "O slug deve conter apenas letras minúsculas, números e hífens (ex: 'meu-restaurante')."
+            )
+        return normalizado
+
+    @model_validator(mode="after")
+    def validar_campos_atualizacao(self) -> "RestauranteUpdate":
+        if not self.model_fields_set:
+            raise ValueError("Informe ao menos um campo para atualização.")
+        for field_name in self.model_fields_set:
+            if getattr(self, field_name) is None:
+                raise ValueError(f"O campo '{field_name}' não pode ser nulo.")
+        return self
+
+
 class RestaurantePinsUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

@@ -105,6 +105,26 @@ class ComandaRepository(TenantBaseRepository[Comanda]):
         await self.session.flush()
         return comanda
 
+    async def update_atendimento(
+        self,
+        *,
+        comanda_id: uuid.UUID,
+        restaurante_id: uuid.UUID,
+        numero_mesa: int | None,
+        identificador: str | None,
+        tipo_atendimento: str,
+    ) -> Comanda | None:
+        comanda = await self.get_by_id_and_restaurante(comanda_id, restaurante_id)
+        if not comanda:
+            return None
+
+        comanda.numero_mesa = numero_mesa
+        comanda.identificador = identificador.strip() if identificador is not None else None
+        comanda.tipo_atendimento = tipo_atendimento
+
+        await self.session.flush()
+        return comanda
+
     async def update_totais(
         self,
         *,
