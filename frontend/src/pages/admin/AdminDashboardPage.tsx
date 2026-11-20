@@ -1,7 +1,8 @@
+import { Link } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { TopBar } from '../../components/layout/TopBar'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, Badge } from '../../components/ui'
-import { ShieldCheck, Store, Utensils } from 'lucide-react'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, Badge, Button } from '../../components/ui'
+import { ShieldCheck, Store, Utensils, ArrowRight, BookOpen, KeyRound } from 'lucide-react'
 
 export function AdminDashboardPage() {
   const { user, restaurante, logout } = useAuth()
@@ -19,10 +20,11 @@ export function AdminDashboardPage() {
         <div>
           <h1 className="text-xl font-bold tracking-tight">Painel Administrativo</h1>
           <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-            Visão geral da gestão multi-restaurante e controle financeiro.
+            Visão geral da gestão multi-restaurante e controle operacional.
           </p>
         </div>
 
+        {/* Cards de Métricas e Contexto */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card>
             <CardHeader>
@@ -64,32 +66,60 @@ export function AdminDashboardPage() {
                 <CardTitle>Módulos do Sistema</CardTitle>
                 <Utensils className="w-4 h-4 text-zinc-400" />
               </div>
-              <CardDescription>Próximas entregas da esteira</CardDescription>
+              <CardDescription>Status das entregas da esteira</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
               <div className="flex flex-wrap gap-1.5">
-                <Badge variant="sky" size="sm">Cardápio (#52)</Badge>
+                <Badge variant="emerald" size="sm" withDot>Cardápio (#52)</Badge>
+                <Badge variant="emerald" size="sm" withDot>Restaurantes & PINs (#52)</Badge>
                 <Badge variant="amber" size="sm">Comandas (#53)</Badge>
-                <Badge variant="emerald" size="sm">Fechamento (#54)</Badge>
-                <Badge variant="red" size="sm">Financeiro (#56)</Badge>
+                <Badge variant="amber" size="sm">Fechamento (#54)</Badge>
+                <Badge variant="zinc" size="sm">Financeiro (#56)</Badge>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Ambiente Operacional Seguro</CardTitle>
-            <CardDescription>
-              Rotas administrativas protegidas com autenticação JWT e isolamento multi-tenant garantido.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
-              O fluxo de autenticação do Dono valida o token via interceptor Axios com restauração automática em <code>/api/v1/auth/me</code>. Qualquer acesso sem privilégio de dono a este módulo é bloqueado e redirecionado pelo <code>ProtectedRoute</code>.
-            </p>
-          </CardContent>
-        </Card>
+        {/* Atalhos Rápidos */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Card className="hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <BookOpen className="w-5 h-5 text-red-600" />
+                  <CardTitle>Gestão do Cardápio</CardTitle>
+                </div>
+                <Link to="/admin/cardapio">
+                  <Button variant="ghost" size="sm">
+                    Acessar <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                  </Button>
+                </Link>
+              </div>
+              <CardDescription>
+                Adicione novos pratos, altere preços, pause itens no salão ou realize desativação segura (soft-delete).
+              </CardDescription>
+            </CardHeader>
+          </Card>
+
+          <Card className="hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <KeyRound className="w-5 h-5 text-red-600" />
+                  <CardTitle>Restaurantes & PINs</CardTitle>
+                </div>
+                <Link to="/admin/restaurantes">
+                  <Button variant="ghost" size="sm">
+                    Acessar <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                  </Button>
+                </Link>
+              </div>
+              <CardDescription>
+                Cadastre novos estabelecimentos, selecione o restaurante ativo e rotacione os PINs de Garçom e Cozinha.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </div>
       </main>
     </div>
   )
