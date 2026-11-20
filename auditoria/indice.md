@@ -8,6 +8,7 @@ Registro central de todas as mudanças significativas realizadas no projeto por 
 
 | Código | Data | Título | Status | Arquivo |
 | :--- | :--- | :--- | :--- | :--- |
+| **0012** | 2026-11-20 | Módulo Financeiro (Despesas e Fluxo de Caixa) | Concluído | [0012-modulo-financeiro-despesas.md](file:///home/heitor/Documentos/workspace/projetos/pessoais/Hstronomia/auditoria/0012-modulo-financeiro-despesas.md) |
 | **0009** | 2026-11-20 | Models e Repositories de Comanda e ItemComanda | Concluído | [0009-models-repositories-comanda.md](file:///home/heitor/Documentos/workspace/projetos/pessoais/Hstronomia/auditoria/0009-models-repositories-comanda.md) |
 | **0008** | 2026-11-20 | Controle de Disponibilidade e Soft-Delete de Itens | Concluído | [0008-disponibilidade-soft-delete-itens.md](file:///home/heitor/Documentos/workspace/projetos/pessoais/Hstronomia/auditoria/0008-disponibilidade-soft-delete-itens.md) |
 | **0007** | 2026-11-20 | CRUD de Itens do Cardápio | Concluído | [0007-crud-itens-cardapio.md](file:///home/heitor/Documentos/workspace/projetos/pessoais/Hstronomia/auditoria/0007-crud-itens-cardapio.md) |
