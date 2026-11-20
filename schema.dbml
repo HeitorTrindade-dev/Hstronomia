@@ -1,0 +1,97 @@
+// ==========================================
+// 1. AUTENTICAÇÃO E RESTAURANTE
+// ==========================================
+
+Table dono {
+  id uuid [pk]
+  nome varchar(120) [not null]
+  email varchar(255) [unique, not null]
+  senha_hash varchar(255) [not null]
+  criado_em timestamp [default: `now()`]
+}
+
+Table restaurante {
+  id uuid [pk]
+  dono_id uuid [not null]
+  nome varchar(120) [not null]
+  slug varchar(100) [unique, not null] // Identificador na URL (ex: "burger-house")
+  codigo_garcom varchar(20) [not null]  // PIN da equipe de garçons (ex: "123456")
+  codigo_cozinha varchar(20) [not null] // PIN da cozinha (ex: "654321")
+  criado_em timestamp [default: `now()`]
+}
+
+Ref: restaurante.dono_id > dono.id
+
+// ==========================================
+// 2. CARDÁPIO E PRODUTOS
+// ==========================================
+
+Table item {
+  id uuid [pk]
+  restaurante_id uuid [not null]
+  nome varchar(120) [not null]
+  descricao text
+  preco decimal(10,2) [not null]
+  disponivel boolean [default: true] // Pausa se faltar insumo no dia
+  ativo boolean [default: true]      // Soft delete para preservar histórico
+  criado_em timestamp [default: `now()`]
+}
+
+Ref: item.restaurante_id > restaurante.id
+
+// ==========================================
+// 3. ATENDIMENTO E COMANDAS
+// ==========================================
+
+Table comanda {
+  id uuid [pk]
+  restaurante_id uuid [not null]
+  
+  // Atendimento
+  numero_mesa int                    // Opcional (null se balcão/viagem)
+  identificador varchar(100)         // Ex: "Mesa 04", "Balcão - João"
+  tipo_atendimento varchar(20) [default: 'mesa'] // 'mesa', 'balcao', 'viagem'
+  
+  // Financeiro
+  status varchar(20) [default: 'aberta'] // 'aberta', 'fechada', 'cancelada'
+  subtotal decimal(10,2) [default: 0]
+  taxa_servico decimal(10,2) [default: 0]
+  desconto decimal(10,2) [default: 0]
+  valor_total decimal(10,2) [default: 0]
+  metodo_pagamento varchar(50)       // 'pix', 'dinheiro', 'cartao_credito', 'cartao_debito'
+  
+  criado_em timestamp [default: `now()`]
+  fechado_em timestamp
+}
+
+Table item_comanda {
+  id uuid [pk]
+  comanda_id uuid [not null]
+  item_id uuid [not null]
+  nome_item varchar(120) [not null]  // Nome congelado no momento do pedido
+  quantidade int [not null, default: 1]
+  preco_unitario decimal(10,2) [not null] // Preço congelado no momento do pedido
+  observacao text                    // Ex: "Sem cebola"
+  status varchar(20) [default: 'pendente'] // 'pendente', 'em_preparo', 'pronto', 'entregue'
+  criado_em timestamp [default: `now()`]
+}
+
+Ref: comanda.restaurante_id > restaurante.id
+Ref: item_comanda.comanda_id > comanda.id
+Ref: item_comanda.item_id > item.id
+
+// ==========================================
+// 4. FINANCEIRO (DESPESAS)
+// ==========================================
+
+Table despesa {
+  id uuid [pk]
+  restaurante_id uuid [not null]
+  descricao varchar(200) [not null]
+  categoria varchar(50)              // 'insumos', 'contas_fixas', 'manutencao', 'outros'
+  valor decimal(10,2) [not null]
+  data_pagamento date [not null]
+  criado_em timestamp [default: `now()`]
+}
+
+Ref: despesa.restaurante_id > restaurante.id
