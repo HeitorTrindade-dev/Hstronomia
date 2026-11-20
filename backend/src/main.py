@@ -14,6 +14,9 @@ app = FastAPI(
     description="API de Gestão Operacional e Financeira para Restaurantes",
     version="0.1.0",
     debug=settings.DEBUG,
+    docs_url="/docs" if settings.DEBUG else None,
+    redoc_url="/redoc" if settings.DEBUG else None,
+    openapi_url="/openapi.json" if settings.DEBUG else None,
 )
 
 app.add_middleware(
