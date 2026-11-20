@@ -233,9 +233,3 @@ backend/.venv/bin/pytest backend/tests -v
 O projeto segue uma rigorosa política de auditoria contínua (*Trilha de Auditoria*). Cada funcionalidade, módulo ou refatoração relevante é obrigatoriamente documentada em arquivos sequenciais na pasta `auditoria/` e catalogada em `auditoria/indice.md`.
 
 Consulte o histórico completo de engenharia em [auditoria/indice.md](auditoria/indice.md).
-
----
-
-## Licenca
-
-Este projeto é desenvolvido sob a licença [MIT](LICENSE).
