@@ -3,10 +3,12 @@ import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ProtectedRoute } from './components/layout'
 import { Skeleton } from './components/ui'
 
-// Páginas
-import { LoginPage } from './pages/auth/LoginPage'
-import { CadastroPage } from './pages/auth/CadastroPage'
-import { AcessoPinPage } from './pages/auth/AcessoPinPage'
+// Páginas de Autenticação
+import { LoginDono } from './pages/auth/LoginDono'
+import { CadastroDono } from './pages/auth/CadastroDono'
+import { AcessoOperacional } from './pages/auth/AcessoOperacional'
+
+// Painéis Operacionais e Administrativos
 import { AdminDashboardPage } from './pages/admin/AdminDashboardPage'
 import { GarcomDashboardPage } from './pages/garcom/GarcomDashboardPage'
 import { CozinhaKdsPage } from './pages/cozinha/CozinhaKdsPage'
@@ -53,10 +55,10 @@ export default function App() {
           <Route path="/" element={<RootRedirect />} />
 
           {/* Rotas Públicas de Autenticação */}
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/cadastrar" element={<CadastroPage />} />
-          <Route path="/acesso/:slug" element={<AcessoPinPage />} />
-          <Route path="/acesso" element={<Navigate to="/acesso/demo" replace />} />
+          <Route path="/login" element={<LoginDono />} />
+          <Route path="/cadastrar" element={<CadastroDono />} />
+          <Route path="/acesso/:slug" element={<AcessoOperacional />} />
+          <Route path="/acesso" element={<Navigate to="/acesso/cantina-famiglia" replace />} />
 
           {/* Vitrine do Design System */}
           <Route path="/design-system" element={<DesignSystemPage />} />
