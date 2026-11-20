@@ -1,0 +1,29 @@
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from src.core.config import settings
+
+app = FastAPI(
+    title="Hstronomia API",
+    description="API de Gestão Operacional e Financeira para Restaurantes",
+    version="0.1.0",
+    debug=settings.DEBUG,
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/api/v1/health", tags=["Health"])
+async def health_check():
+    return {
+        "status": "ok",
+        "app": "Hstronomia API",
+        "version": "0.1.0",
+        "environment": settings.ENVIRONMENT,
+    }
