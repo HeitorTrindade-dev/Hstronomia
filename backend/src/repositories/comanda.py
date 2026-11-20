@@ -157,6 +157,23 @@ class ComandaRepository(BaseRepository[Comanda]):
         await self.session.flush()
         return comanda
 
+    async def cancelar(
+        self,
+        *,
+        comanda_id: uuid.UUID,
+        restaurante_id: uuid.UUID,
+        fechado_em: datetime,
+    ) -> Comanda | None:
+        comanda = await self.get_by_id_and_restaurante(comanda_id, restaurante_id)
+        if not comanda:
+            return None
+
+        comanda.status = "cancelada"
+        comanda.fechado_em = fechado_em
+
+        await self.session.flush()
+        return comanda
+
     async def somar_vendas_fechadas_periodo(
         self,
         restaurante_id: uuid.UUID,

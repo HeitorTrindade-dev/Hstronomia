@@ -90,6 +90,12 @@ class ItemComandaResponse(BaseModel):
 
 
 MetodoPagamento = Literal["pix", "dinheiro", "cartao_credito", "cartao_debito"]
+StatusComanda = Literal["aberta", "fechada", "cancelada"]
+TipoAtendimento = Literal["mesa", "balcao", "viagem"]
+
+
+class ComandaDetalheResponse(ComandaResponse):
+    itens: list[ItemComandaResponse]
 
 
 class ComandaFecharRequest(BaseModel):

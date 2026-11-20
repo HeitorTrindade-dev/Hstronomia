@@ -14,10 +14,13 @@ from src.repositories.item import ItemRepository
 from src.repositories.item_comanda import ItemComandaRepository
 from src.schemas.comanda import (
     ComandaCreate,
+    ComandaDetalheResponse,
     ComandaFecharRequest,
     ComandaPreviaResponse,
     ItemComandaCreate,
     ItemComandaResponse,
+    StatusComanda,
+    TipoAtendimento,
 )
 
 logger = logging.getLogger(__name__)
@@ -36,6 +39,96 @@ class ComandaService:
     @staticmethod
     def quantizar_moeda(valor: Decimal) -> Decimal:
         return valor.quantize(CENTAVOS, rounding=ROUND_HALF_UP)
+
+    async def listar_comandas(
+        self,
+        restaurante_id: uuid.UUID,
+        *,
+        status_filtro: StatusComanda | None = None,
+        tipo_atendimento: TipoAtendimento | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[Comanda]:
+        return await self.comanda_repo.list_by_restaurante(
+            restaurante_id=restaurante_id,
+            status=status_filtro,
+            tipo_atendimento=tipo_atendimento,
+            limit=limit,
+            offset=offset,
+        )
+
+    async def obter_comanda(
+        self,
+        restaurante_id: uuid.UUID,
+        comanda_id: uuid.UUID,
+    ) -> ComandaDetalheResponse:
+        comanda = await self.comanda_repo.get_by_id_and_restaurante(
+            comanda_id,
+            restaurante_id,
+        )
+        if not comanda:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Comanda não encontrada.",
+            )
+
+        itens = await self.item_comanda_repo.list_by_comanda(comanda.id, restaurante_id)
+        return ComandaDetalheResponse(
+            id=comanda.id,
+            restaurante_id=comanda.restaurante_id,
+            numero_mesa=comanda.numero_mesa,
+            identificador=comanda.identificador,
+            tipo_atendimento=comanda.tipo_atendimento,
+            status=comanda.status,
+            subtotal=comanda.subtotal,
+            taxa_servico=comanda.taxa_servico,
+            desconto=comanda.desconto,
+            valor_total=comanda.valor_total,
+            metodo_pagamento=comanda.metodo_pagamento,
+            criado_em=comanda.criado_em,
+            fechado_em=comanda.fechado_em,
+            itens=[ItemComandaResponse.model_validate(ic) for ic in itens],
+        )
+
+    async def cancelar_comanda(
+        self,
+        restaurante_id: uuid.UUID,
+        comanda_id: uuid.UUID,
+    ) -> Comanda:
+        comanda = await self.comanda_repo.get_by_id_and_restaurante(
+            comanda_id,
+            restaurante_id,
+        )
+        if not comanda:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Comanda não encontrada.",
+            )
+
+        if comanda.status != "aberta":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Apenas comandas abertas podem ser canceladas.",
+            )
+
+        cancelada = await self.comanda_repo.cancelar(
+            comanda_id=comanda.id,
+            restaurante_id=restaurante_id,
+            fechado_em=datetime.now(UTC),
+        )
+        if not cancelada:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Comanda não encontrada.",
+            )
+
+        logger.info(
+            "Comanda cancelada (restaurante_id=%s, comanda_id=%s, mesa=%s)",
+            restaurante_id,
+            cancelada.id,
+            cancelada.numero_mesa,
+        )
+        return cancelada
 
     async def abrir_comanda(
         self,
