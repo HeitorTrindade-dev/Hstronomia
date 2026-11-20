@@ -1,13 +1,14 @@
-import uuid
 from dataclasses import dataclass
+import hmac
 from typing import Annotated
+import uuid
 
 from fastapi import Depends, HTTPException, Query, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.database import get_db
-from src.core.security import decode_access_token
+from src.core.security import compute_pin_fingerprint, decode_access_token
 from src.models.dono import Dono
 from src.models.restaurante import Restaurante
 from src.repositories.dono import DonoRepository
@@ -73,6 +74,18 @@ async def get_current_user(
         restaurante = await restaurante_repo.get_by_id(restaurante_uuid)
         if not restaurante:
             raise unauthorized_exception
+
+        pin_fp = payload.get("pin_fp")
+        if pin_fp is not None:
+            pin_atual = (
+                restaurante.codigo_garcom
+                if role == "garcom"
+                else restaurante.codigo_cozinha
+            )
+            fp_esperado = compute_pin_fingerprint(restaurante.id, role, pin_atual)
+            if not isinstance(pin_fp, str) or not hmac.compare_digest(pin_fp, fp_esperado):
+                raise unauthorized_exception
+
         return UserSession(
             role=role,
             restaurante=restaurante,
