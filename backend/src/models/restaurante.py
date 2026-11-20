@@ -10,6 +10,7 @@ from src.core.database import Base
 
 if TYPE_CHECKING:
     from src.models.comanda import Comanda
+    from src.models.despesa import Despesa
     from src.models.dono import Dono
     from src.models.item import Item
 
@@ -46,6 +47,11 @@ class Restaurante(Base):
     )
     comandas: Mapped[list["Comanda"]] = relationship(
         "Comanda",
+        back_populates="restaurante",
+        cascade="all, delete-orphan",
+    )
+    despesas: Mapped[list["Despesa"]] = relationship(
+        "Despesa",
         back_populates="restaurante",
         cascade="all, delete-orphan",
     )
