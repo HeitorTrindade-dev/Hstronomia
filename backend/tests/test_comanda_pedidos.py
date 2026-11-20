@@ -820,3 +820,158 @@ async def test_precisao_decimal_e_arredondamento_round_half_up(db_session: Async
     assert r1 == Decimal("10.01")
     assert r2 == Decimal("10.02")
     assert r3 == Decimal("10.00")
+
+
+@pytest.mark.asyncio
+async def test_abrir_comanda_duplicidade_concorrente_retorna_409(db_session: AsyncSession):
+    dono_a, rest_a, _, _, _ = await _criar_cenario_pedidos(db_session)
+    headers_a = _auth_headers(dono_a, rest_a)
+
+    comanda_repo = ComandaRepository(db_session)
+    await comanda_repo.create(restaurante_id=rest_a.id, numero_mesa=42)
+    await comanda_repo.create(restaurante_id=rest_a.id, numero_mesa=42)
+    await db_session.commit()
+
+    async def override_get_db():
+        yield db_session
+
+    app.dependency_overrides[get_db] = override_get_db
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app, raise_app_exceptions=False),
+            base_url="http://test",
+        ) as client:
+            res = await client.post(
+                "/api/v1/comandas",
+                headers=headers_a["garcom"],
+                json={"numero_mesa": 42, "tipo_atendimento": "mesa"},
+            )
+            assert res.status_code == 409
+            assert res.json()["detail"] == "Já existe uma comanda aberta para esta mesa."
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_adicionar_item_overflow_numeric_retorna_400_sem_mutacao(db_session: AsyncSession):
+    dono_a, rest_a, _, _, _ = await _criar_cenario_pedidos(db_session)
+    headers_a = _auth_headers(dono_a, rest_a)
+
+    item_repo = ItemRepository(db_session)
+    item_caro = await item_repo.create(
+        restaurante_id=rest_a.id,
+        nome="Vinho Raro",
+        descricao=None,
+        preco=Decimal("9999999.99"),
+    )
+    item_limite = await item_repo.create(
+        restaurante_id=rest_a.id,
+        nome="Reserva Especial",
+        descricao=None,
+        preco=Decimal("99999990.00"),
+    )
+
+    comanda_repo = ComandaRepository(db_session)
+    comanda_sub = await comanda_repo.create(restaurante_id=rest_a.id, numero_mesa=51)
+    comanda_tot = await comanda_repo.create(restaurante_id=rest_a.id, numero_mesa=52)
+    await comanda_repo.update_totais(
+        comanda_id=comanda_tot.id,
+        restaurante_id=rest_a.id,
+        subtotal=Decimal("0.00"),
+        taxa_servico=Decimal("20.00"),
+        valor_total=Decimal("20.00"),
+    )
+    await db_session.commit()
+
+    async def override_get_db():
+        yield db_session
+
+    app.dependency_overrides[get_db] = override_get_db
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            # 1. Overflow de subtotal (9999999.99 * 999 > 99999999.99) -> 400
+            res_sub = await client.post(
+                f"/api/v1/comandas/{comanda_sub.id}/itens",
+                headers=headers_a["garcom"],
+                json={"item_id": str(item_caro.id), "quantidade": 999},
+            )
+            assert res_sub.status_code == 400
+
+            # 2. Subtotal dentro do limite (99999990.00), mas valor_total com taxa_servico (20.00) excede -> 400
+            res_tot = await client.post(
+                f"/api/v1/comandas/{comanda_tot.id}/itens",
+                headers=headers_a["garcom"],
+                json={"item_id": str(item_limite.id), "quantidade": 1},
+            )
+            assert res_tot.status_code == 400
+
+            item_comanda_repo = ItemComandaRepository(db_session)
+            assert await item_comanda_repo.list_by_comanda(comanda_sub.id, rest_a.id) == []
+            assert await item_comanda_repo.list_by_comanda(comanda_tot.id, rest_a.id) == []
+
+            c_sub_db = await comanda_repo.get_by_id_and_restaurante(comanda_sub.id, rest_a.id)
+            assert c_sub_db is not None
+            assert c_sub_db.subtotal == Decimal("0.00")
+            assert c_sub_db.valor_total == Decimal("0.00")
+
+            c_tot_db = await comanda_repo.get_by_id_and_restaurante(comanda_tot.id, rest_a.id)
+            assert c_tot_db is not None
+            assert c_tot_db.subtotal == Decimal("0.00")
+            assert c_tot_db.valor_total == Decimal("20.00")
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_validacoes_strict_int_e_null_bytes_retornam_422(db_session: AsyncSession):
+    dono_a, rest_a, _, _, itens = await _criar_cenario_pedidos(db_session)
+    headers_a = _auth_headers(dono_a, rest_a)
+
+    comanda_repo = ComandaRepository(db_session)
+    comanda_a = await comanda_repo.create(restaurante_id=rest_a.id, numero_mesa=60)
+    await db_session.commit()
+
+    async def override_get_db():
+        yield db_session
+
+    app.dependency_overrides[get_db] = override_get_db
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            # numero_mesa com bool ou float -> 422
+            for mesa_invalida in (True, False, 1.0, 1.5):
+                res = await client.post(
+                    "/api/v1/comandas",
+                    headers=headers_a["garcom"],
+                    json={"numero_mesa": mesa_invalida},
+                )
+                assert res.status_code == 422
+
+            # quantidade com bool ou float -> 422
+            for qtd_invalida in (True, False, 1.0, 1.5):
+                res = await client.post(
+                    f"/api/v1/comandas/{comanda_a.id}/itens",
+                    headers=headers_a["garcom"],
+                    json={"item_id": str(itens["a1"].id), "quantidade": qtd_invalida},
+                )
+                assert res.status_code == 422
+
+            # Null bytes (\x00) em identificador e observacao -> 422
+            res_ident_nul = await client.post(
+                "/api/v1/comandas",
+                headers=headers_a["garcom"],
+                json={"identificador": "Mesa\x00VIP", "tipo_atendimento": "balcao"},
+            )
+            assert res_ident_nul.status_code == 422
+
+            res_obs_nul = await client.post(
+                f"/api/v1/comandas/{comanda_a.id}/itens",
+                headers=headers_a["garcom"],
+                json={
+                    "item_id": str(itens["a1"].id),
+                    "quantidade": 1,
+                    "observacao": "Sem\x00cebola",
+                },
+            )
+            assert res_obs_nul.status_code == 422
+    finally:
+        app.dependency_overrides.clear()
