@@ -9,6 +9,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.core.database import Base
 
 if TYPE_CHECKING:
+    from src.models.comanda import Comanda
     from src.models.dono import Dono
     from src.models.item import Item
 
@@ -40,6 +41,11 @@ class Restaurante(Base):
     dono: Mapped["Dono"] = relationship("Dono", back_populates="restaurantes")
     itens: Mapped[list["Item"]] = relationship(
         "Item",
+        back_populates="restaurante",
+        cascade="all, delete-orphan",
+    )
+    comandas: Mapped[list["Comanda"]] = relationship(
+        "Comanda",
         back_populates="restaurante",
         cascade="all, delete-orphan",
     )
