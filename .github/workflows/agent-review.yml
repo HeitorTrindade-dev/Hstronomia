@@ -1,0 +1,52 @@
+name: Agent PR Review Assistant
+
+on:
+  pull_request_review_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+# Enfileira comentários simultâneos no mesmo PR para evitar conflitos de git push
+concurrency:
+  group: agent-review-${{ github.event.pull_request.head.ref }}
+  cancel-in-progress: false
+
+jobs:
+  review_handler:
+    if: github.actor == github.repository_owner
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout branch do PR
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 1
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configurar Python e uv (cache rápido)
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: "backend/pyproject.toml"
+
+      - name: Instalar dependências de teste do backend
+        if: startsWith(github.event.comment.path, 'backend/')
+        working-directory: backend
+        run: |
+          uv venv --python 3.12 .venv
+          uv pip install --python .venv/bin/python -e ".[dev]"
+
+      - name: Configurar Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Executar Agent PR Review
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          AI_MODEL: ${{ vars.AI_MODEL || 'gemini-2.5-flash' }}
+        run: python3 .github/scripts/agent_pr_review.py
