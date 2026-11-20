@@ -19,6 +19,7 @@ from src.schemas.comanda import (
     ComandaPreviaResponse,
     ItemComandaCreate,
     ItemComandaResponse,
+    ItemComandaUpdate,
     StatusComanda,
     TipoAtendimento,
 )
@@ -283,6 +284,181 @@ class ComandaService:
         )
         return item_comanda
 
+    async def atualizar_item_comanda(
+        self,
+        restaurante_id: uuid.UUID,
+        comanda_id: uuid.UUID,
+        item_comanda_id: uuid.UUID,
+        data: ItemComandaUpdate,
+    ) -> ItemComanda:
+        comanda = await self.comanda_repo.get_by_id_and_restaurante(
+            comanda_id,
+            restaurante_id,
+        )
+        if not comanda:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Comanda não encontrada.",
+            )
+
+        if comanda.status != "aberta":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Não é possível alterar itens de uma comanda que não está aberta.",
+            )
+
+        item_comanda = await self.item_comanda_repo.get_by_id_and_restaurante(
+            item_comanda_id,
+            restaurante_id,
+        )
+        if not item_comanda or item_comanda.comanda_id != comanda.id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Item da comanda não encontrado.",
+            )
+
+        if item_comanda.status != "pendente":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Apenas itens com status 'pendente' podem ser alterados.",
+            )
+
+        nova_quantidade = (
+            data.quantidade if data.quantidade is not None else item_comanda.quantidade
+        )
+
+        itens = await self.item_comanda_repo.list_by_comanda(comanda.id, restaurante_id)
+        subtotal = self.quantizar_moeda(
+            sum(
+                (
+                    Decimal(ic.preco_unitario)
+                    * Decimal(nova_quantidade if ic.id == item_comanda.id else ic.quantidade)
+                    for ic in itens
+                ),
+                Decimal("0.00"),
+            )
+        )
+        taxa_servico = self.quantizar_moeda(Decimal(comanda.taxa_servico))
+        desconto = self.quantizar_moeda(Decimal(comanda.desconto))
+        valor_total = max(
+            Decimal("0.00"),
+            self.quantizar_moeda(subtotal + taxa_servico - desconto),
+        )
+
+        if subtotal > MAX_VALOR_MONETARIO or valor_total > MAX_VALOR_MONETARIO:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="O valor total da comanda excede o limite máximo suportado.",
+            )
+
+        atualizado = await self.item_comanda_repo.update_item(
+            item_comanda_id=item_comanda.id,
+            restaurante_id=restaurante_id,
+            quantidade=data.quantidade,
+            observacao=data.observacao,
+            atualizar_observacao="observacao" in data.model_fields_set,
+        )
+        if not atualizado:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Item da comanda não encontrado.",
+            )
+
+        await self.comanda_repo.update_totais(
+            comanda_id=comanda.id,
+            restaurante_id=restaurante_id,
+            subtotal=subtotal,
+            valor_total=valor_total,
+        )
+
+        logger.info(
+            "Item da comanda atualizado (restaurante_id=%s, comanda_id=%s, item_comanda_id=%s, quantidade=%s)",
+            restaurante_id,
+            comanda.id,
+            atualizado.id,
+            atualizado.quantidade,
+        )
+        return atualizado
+
+    async def remover_item_comanda(
+        self,
+        restaurante_id: uuid.UUID,
+        comanda_id: uuid.UUID,
+        item_comanda_id: uuid.UUID,
+    ) -> None:
+        comanda = await self.comanda_repo.get_by_id_and_restaurante(
+            comanda_id,
+            restaurante_id,
+        )
+        if not comanda:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Comanda não encontrada.",
+            )
+
+        if comanda.status != "aberta":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Não é possível remover itens de uma comanda que não está aberta.",
+            )
+
+        item_comanda = await self.item_comanda_repo.get_by_id_and_restaurante(
+            item_comanda_id,
+            restaurante_id,
+        )
+        if not item_comanda or item_comanda.comanda_id != comanda.id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Item da comanda não encontrado.",
+            )
+
+        if item_comanda.status != "pendente":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Apenas itens com status 'pendente' podem ser removidos.",
+            )
+
+        removido = await self.item_comanda_repo.delete_by_id_and_restaurante(
+            item_comanda_id=item_comanda.id,
+            restaurante_id=restaurante_id,
+        )
+        if not removido:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Item da comanda não encontrado.",
+            )
+
+        itens_restantes = await self.item_comanda_repo.list_by_comanda(
+            comanda.id,
+            restaurante_id,
+        )
+        subtotal = self.quantizar_moeda(
+            sum(
+                (Decimal(ic.preco_unitario) * Decimal(ic.quantidade) for ic in itens_restantes),
+                Decimal("0.00"),
+            )
+        )
+        taxa_servico = self.quantizar_moeda(Decimal(comanda.taxa_servico))
+        desconto = self.quantizar_moeda(Decimal(comanda.desconto))
+        valor_total = max(
+            Decimal("0.00"),
+            self.quantizar_moeda(subtotal + taxa_servico - desconto),
+        )
+
+        await self.comanda_repo.update_totais(
+            comanda_id=comanda.id,
+            restaurante_id=restaurante_id,
+            subtotal=subtotal,
+            valor_total=valor_total,
+        )
+
+        logger.info(
+            "Item removido da comanda (restaurante_id=%s, comanda_id=%s, item_comanda_id=%s)",
+            restaurante_id,
+            comanda.id,
+            item_comanda_id,
+        )
+
     def _calcular_valores_comanda(
         self,
         itens: list[ItemComanda],
@@ -387,6 +563,12 @@ class ComandaService:
             )
 
         itens = await self.item_comanda_repo.list_by_comanda(comanda.id, restaurante_id)
+        if not itens:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Não é possível fechar uma comanda sem itens. Utilize o cancelamento.",
+            )
+
         subtotal, taxa_servico, desconto_q, valor_total = self._calcular_valores_comanda(
             itens,
             incluir_taxa_servico=data.incluir_taxa_servico,

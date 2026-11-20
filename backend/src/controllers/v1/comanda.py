@@ -15,6 +15,7 @@ from src.schemas.comanda import (
     ComandaResponse,
     ItemComandaCreate,
     ItemComandaResponse,
+    ItemComandaUpdate,
     StatusComanda,
     TipoAtendimento,
 )
@@ -102,6 +103,51 @@ async def adicionar_item_comanda(
     )
     await session.commit()
     return item_comanda
+
+
+@router.patch(
+    "/{comanda_id}/itens/{item_comanda_id}",
+    response_model=ItemComandaResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Atualizar quantidade ou observação de item pendente da comanda (Garçom ou Dono)",
+)
+async def atualizar_item_comanda(
+    comanda_id: uuid.UUID,
+    item_comanda_id: uuid.UUID,
+    data: ItemComandaUpdate,
+    restaurante_id: Annotated[uuid.UUID, Depends(get_atendimento_restaurante_id)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+):
+    service = ComandaService(session)
+    item_comanda = await service.atualizar_item_comanda(
+        restaurante_id=restaurante_id,
+        comanda_id=comanda_id,
+        item_comanda_id=item_comanda_id,
+        data=data,
+    )
+    await session.commit()
+    return item_comanda
+
+
+@router.delete(
+    "/{comanda_id}/itens/{item_comanda_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
+    summary="Remover item pendente de uma comanda aberta e recalcular totais (Garçom ou Dono)",
+)
+async def remover_item_comanda(
+    comanda_id: uuid.UUID,
+    item_comanda_id: uuid.UUID,
+    restaurante_id: Annotated[uuid.UUID, Depends(get_atendimento_restaurante_id)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+):
+    service = ComandaService(session)
+    await service.remover_item_comanda(
+        restaurante_id=restaurante_id,
+        comanda_id=comanda_id,
+        item_comanda_id=item_comanda_id,
+    )
+    await session.commit()
 
 
 @router.get(

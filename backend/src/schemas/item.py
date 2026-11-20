@@ -16,6 +16,8 @@ class ItemCreate(BaseModel):
     @field_validator("nome")
     @classmethod
     def validar_nome(cls, value: str) -> str:
+        if "\x00" in value:
+            raise ValueError("O nome do item não pode conter caracteres nulos.")
         nome_limpo = value.strip()
         if len(nome_limpo) < 2:
             raise ValueError("O nome do item deve ter pelo menos 2 caracteres.")
@@ -26,6 +28,8 @@ class ItemCreate(BaseModel):
     def normalizar_descricao(cls, value: str | None) -> str | None:
         if value is None:
             return None
+        if "\x00" in value:
+            raise ValueError("A descrição do item não pode conter caracteres nulos.")
         limpa = value.strip()
         return limpa or None
 
@@ -43,6 +47,8 @@ class ItemUpdate(BaseModel):
     def validar_nome(cls, value: str | None) -> str | None:
         if value is None:
             return None
+        if "\x00" in value:
+            raise ValueError("O nome do item não pode conter caracteres nulos.")
         nome_limpo = value.strip()
         if len(nome_limpo) < 2:
             raise ValueError("O nome do item deve ter pelo menos 2 caracteres.")
@@ -53,6 +59,8 @@ class ItemUpdate(BaseModel):
     def normalizar_descricao(cls, value: str | None) -> str | None:
         if value is None:
             return None
+        if "\x00" in value:
+            raise ValueError("A descrição do item não pode conter caracteres nulos.")
         limpa = value.strip()
         return limpa or None
 
@@ -61,6 +69,12 @@ class ItemDisponibilidadeUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     disponivel: bool
+
+
+class ItemReativarRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    disponivel: bool = True
 
 
 class ItemResponse(BaseModel):

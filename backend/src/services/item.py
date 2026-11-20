@@ -165,3 +165,42 @@ class ItemService:
             item_id,
         )
         return desativado
+
+    async def reativar_item(
+        self,
+        restaurante_id: uuid.UUID,
+        item_id: uuid.UUID,
+        *,
+        disponivel: bool = True,
+    ) -> Item:
+        item_atual = await self.item_repo.get_by_id_and_restaurante(item_id, restaurante_id)
+        if not item_atual:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Item não encontrado.",
+            )
+
+        if item_atual.ativo:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="O item já está ativo no cardápio.",
+            )
+
+        reativado = await self.item_repo.reativar(
+            item_id=item_id,
+            restaurante_id=restaurante_id,
+            disponivel=disponivel,
+        )
+        if not reativado:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Item não encontrado.",
+            )
+
+        logger.info(
+            "Item reativado no cardápio (restaurante_id=%s, item_id=%s, disponivel=%s)",
+            restaurante_id,
+            item_id,
+            disponivel,
+        )
+        return reativado
