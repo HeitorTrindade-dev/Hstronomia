@@ -12,6 +12,7 @@ from src.schemas.restaurante import (
     RestaurantePinsUpdate,
     RestaurantePublicoResponse,
     RestauranteResponse,
+    RestauranteUpdate,
 )
 from src.services.restaurante import RestauranteService
 
@@ -61,6 +62,28 @@ async def obter_restaurante_por_slug(
 ):
     service = RestauranteService(session)
     return await service.obter_por_slug_publico(slug=slug)
+
+
+@router.patch(
+    "/{restaurante_id}",
+    response_model=RestauranteResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Atualizar nome e/ou slug de um restaurante (somente Dono)",
+)
+async def atualizar_restaurante(
+    restaurante_id: uuid.UUID,
+    data: RestauranteUpdate,
+    current_dono: Annotated[Dono, Depends(get_current_dono)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+):
+    service = RestauranteService(session)
+    restaurante = await service.atualizar_restaurante(
+        dono_id=current_dono.id,
+        restaurante_id=restaurante_id,
+        data=data,
+    )
+    await session.commit()
+    return restaurante
 
 
 @router.patch(

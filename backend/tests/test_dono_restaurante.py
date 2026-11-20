@@ -3,6 +3,7 @@ import uuid
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.repositories.base import TenantIsolationError
 from src.repositories.dono import DonoRepository
 from src.repositories.restaurante import RestauranteRepository
 
@@ -31,14 +32,12 @@ async def test_dono_repository_crud(db_session: AsyncSession):
     assert por_id is not None
     assert por_id.email == "carlos@restaurante.com"
 
-    # 4. List all (herdado do BaseRepository)
-    todos = await repo.list_all()
-    assert len(todos) == 1
+    # 4. List all e Delete by ID bloqueados contra exposição global e deleção em cascata
+    with pytest.raises(TenantIsolationError):
+        await repo.list_all()
 
-    # 5. Delete by ID (herdado do BaseRepository)
-    removido = await repo.delete_by_id(dono.id)
-    assert removido is True
-    assert await repo.get_by_id(dono.id) is None
+    with pytest.raises(TenantIsolationError):
+        await repo.delete_by_id(dono.id)
 
 
 @pytest.mark.asyncio

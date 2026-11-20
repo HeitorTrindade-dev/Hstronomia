@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class ItemCreate(BaseModel):
@@ -63,6 +63,15 @@ class ItemUpdate(BaseModel):
             raise ValueError("A descrição do item não pode conter caracteres nulos.")
         limpa = value.strip()
         return limpa or None
+
+    @model_validator(mode="after")
+    def validar_campos_atualizacao(self) -> "ItemUpdate":
+        if not self.model_fields_set:
+            raise ValueError("Informe ao menos um campo para atualização.")
+        for field_name in ("nome", "preco", "disponivel"):
+            if field_name in self.model_fields_set and getattr(self, field_name) is None:
+                raise ValueError(f"O campo '{field_name}' não pode ser nulo.")
+        return self
 
 
 class ItemDisponibilidadeUpdate(BaseModel):

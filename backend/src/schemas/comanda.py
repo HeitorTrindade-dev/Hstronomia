@@ -47,6 +47,32 @@ class ComandaCreate(BaseModel):
         return self
 
 
+class ComandaUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    numero_mesa: StrictInt | None = Field(default=None, ge=1, le=9999)
+    identificador: str | None = Field(default=None, max_length=100)
+    tipo_atendimento: Literal["mesa", "balcao", "viagem"] | None = None
+
+    @field_validator("identificador")
+    @classmethod
+    def normalizar_identificador(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        if "\x00" in value:
+            raise ValueError("O identificador não pode conter caracteres nulos.")
+        limpo = value.strip()
+        return limpo or None
+
+    @model_validator(mode="after")
+    def validar_campos_atualizacao(self) -> "ComandaUpdate":
+        if not self.model_fields_set:
+            raise ValueError("Informe ao menos um campo para atualização.")
+        if "tipo_atendimento" in self.model_fields_set and self.tipo_atendimento is None:
+            raise ValueError("O campo 'tipo_atendimento' não pode ser nulo.")
+        return self
+
+
 class ComandaResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

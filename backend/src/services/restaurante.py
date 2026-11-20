@@ -7,7 +7,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.restaurante import Restaurante
 from src.repositories.restaurante import RestauranteRepository
-from src.schemas.restaurante import RestauranteCreate, RestaurantePinsUpdate
+from src.schemas.restaurante import (
+    RestauranteCreate,
+    RestaurantePinsUpdate,
+    RestauranteUpdate,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +42,7 @@ class RestauranteService:
                 codigo_cozinha=data.codigo_cozinha,
             )
         except IntegrityError:
+            await self.session.rollback()
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="Já existe um restaurante cadastrado com este slug.",
@@ -109,5 +114,54 @@ class RestauranteService:
             "PINs operacionais atualizados (dono_id=%s, restaurante_id=%s)",
             dono_id,
             restaurante_id,
+        )
+        return atualizado
+
+    async def atualizar_restaurante(
+        self,
+        dono_id: uuid.UUID,
+        restaurante_id: uuid.UUID,
+        data: RestauranteUpdate,
+    ) -> Restaurante:
+        restaurante = await self.restaurante_repo.get_by_id(restaurante_id)
+        if not restaurante or restaurante.dono_id != dono_id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Restaurante não encontrado.",
+            )
+
+        if data.slug is not None and data.slug != restaurante.slug:
+            existente = await self.restaurante_repo.get_by_slug(data.slug)
+            if existente is not None and existente.id != restaurante.id:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Já existe um restaurante cadastrado com este slug.",
+                )
+
+        try:
+            atualizado = await self.restaurante_repo.update_dados(
+                restaurante_id=restaurante_id,
+                dono_id=dono_id,
+                nome=data.nome,
+                slug=data.slug,
+            )
+        except IntegrityError:
+            await self.session.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Já existe um restaurante cadastrado com este slug.",
+            ) from None
+
+        if not atualizado:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Restaurante não encontrado.",
+            )
+
+        logger.info(
+            "Dados do restaurante atualizados (dono_id=%s, restaurante_id=%s, slug=%s)",
+            dono_id,
+            atualizado.id,
+            atualizado.slug,
         )
         return atualizado
