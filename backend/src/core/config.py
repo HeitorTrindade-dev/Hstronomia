@@ -25,6 +25,11 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "sua-chave-secreta-de-pelo-menos-32-caracteres-para-desenvolvimento"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 480
+    OPERATIONAL_TOKEN_EXPIRE_MINUTES: int = 120
+
+    # Rate Limiting (Autenticação Operacional por PIN)
+    OPERATIONAL_RATE_LIMIT_MAX_ATTEMPTS: int = 5
+    OPERATIONAL_RATE_LIMIT_WINDOW_SECONDS: int = 300
 
     model_config = SettingsConfigDict(
         env_file=".env",

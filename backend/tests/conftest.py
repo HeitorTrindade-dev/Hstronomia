@@ -1,8 +1,10 @@
+import pytest
 import pytest_asyncio
 from typing import AsyncGenerator
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from src.core.database import Base
+from src.core.rate_limit import operational_login_rate_limiter
 # Import all models to register with Base.metadata
 import src.models  # noqa: F401
 
@@ -15,6 +17,13 @@ test_async_session_factory = async_sessionmaker(
     autoflush=False,
     expire_on_commit=False,
 )
+
+
+@pytest.fixture(autouse=True)
+def reset_rate_limiter():
+    operational_login_rate_limiter.clear()
+    yield
+    operational_login_rate_limiter.clear()
 
 
 @pytest_asyncio.fixture(scope="function")

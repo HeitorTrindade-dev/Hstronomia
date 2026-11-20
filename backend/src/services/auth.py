@@ -1,7 +1,11 @@
+import hmac
 import uuid
+from datetime import timedelta
+
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.core.config import settings
 from src.core.security import create_access_token, hash_password, verify_password
 from src.models.dono import Dono
 from src.repositories.dono import DonoRepository
@@ -73,15 +77,18 @@ class AuthService:
         )
 
         restaurante_repo = RestauranteRepository(self.session)
-        restaurante = await restaurante_repo.get_by_slug(data.slug)
+        slug_normalizado = data.slug.strip().lower()
+        restaurante = await restaurante_repo.get_by_slug(slug_normalizado)
         if not restaurante:
             raise credenciais_invalidas
 
         pin_limpo = data.pin.strip()
-        role = None
-        if pin_limpo == restaurante.codigo_garcom:
+        is_garcom = hmac.compare_digest(pin_limpo, restaurante.codigo_garcom)
+        is_cozinha = hmac.compare_digest(pin_limpo, restaurante.codigo_cozinha)
+
+        if is_garcom:
             role = "garcom"
-        elif pin_limpo == restaurante.codigo_cozinha:
+        elif is_cozinha:
             role = "cozinha"
         else:
             raise credenciais_invalidas
@@ -91,7 +98,10 @@ class AuthService:
             "restaurante_id": str(restaurante.id),
             "role": role,
         }
-        access_token = create_access_token(data=token_data)
+        access_token = create_access_token(
+            data=token_data,
+            expires_delta=timedelta(minutes=settings.OPERATIONAL_TOKEN_EXPIRE_MINUTES),
+        )
 
         return TokenResponse(
             access_token=access_token,

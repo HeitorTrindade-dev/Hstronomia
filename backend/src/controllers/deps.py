@@ -59,8 +59,18 @@ async def get_current_user(
         return UserSession(role="dono", dono=dono)
 
     if role in ("garcom", "cozinha"):
+        restaurante_id_str = payload.get("restaurante_id")
+        if not restaurante_id_str:
+            raise unauthorized_exception
+        try:
+            restaurante_uuid = uuid.UUID(restaurante_id_str)
+        except ValueError:
+            raise unauthorized_exception
+        if restaurante_uuid != sub_uuid:
+            raise unauthorized_exception
+
         restaurante_repo = RestauranteRepository(session)
-        restaurante = await restaurante_repo.get_by_id(sub_uuid)
+        restaurante = await restaurante_repo.get_by_id(restaurante_uuid)
         if not restaurante:
             raise unauthorized_exception
         return UserSession(
@@ -84,6 +94,28 @@ async def get_current_dono(
             detail="Acesso restrito ao Dono do estabelecimento.",
         )
     return current_user.dono
+
+
+async def get_current_garcom(
+    current_user: Annotated[UserSession, Depends(get_current_user)],
+) -> UserSession:
+    if current_user.role != "garcom" or not current_user.restaurante_id or not current_user.restaurante:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acesso restrito ao Garçom.",
+        )
+    return current_user
+
+
+async def get_current_cozinha(
+    current_user: Annotated[UserSession, Depends(get_current_user)],
+) -> UserSession:
+    if current_user.role != "cozinha" or not current_user.restaurante_id or not current_user.restaurante:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acesso restrito à Cozinha.",
+        )
+    return current_user
 
 
 async def get_current_operacional(

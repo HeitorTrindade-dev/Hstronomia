@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 
 class DonoCreate(BaseModel):
@@ -25,8 +25,26 @@ class LoginRequest(BaseModel):
 
 
 class OperacionalLoginRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     slug: str = Field(..., min_length=1, max_length=100)
-    pin: str = Field(..., min_length=1, max_length=20)
+    pin: str = Field(..., min_length=4, max_length=20)
+
+    @field_validator("slug")
+    @classmethod
+    def normalizar_slug(cls, value: str) -> str:
+        normalizado = value.strip().lower()
+        if not normalizado:
+            raise ValueError("Slug do restaurante é obrigatório.")
+        return normalizado
+
+    @field_validator("pin")
+    @classmethod
+    def validar_pin_numerico(cls, value: str) -> str:
+        pin_limpo = value.strip()
+        if not pin_limpo.isdigit() or not (4 <= len(pin_limpo) <= 20):
+            raise ValueError("O PIN deve conter entre 4 e 20 dígitos numéricos.")
+        return pin_limpo
 
 
 class TokenResponse(BaseModel):
