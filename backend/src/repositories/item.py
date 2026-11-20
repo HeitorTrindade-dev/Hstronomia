@@ -5,14 +5,20 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.item import Item
-from src.repositories.base import BaseRepository
+from src.repositories.base import TenantBaseRepository, TenantIsolationError
 
 
-class ItemRepository(BaseRepository[Item]):
+class ItemRepository(TenantBaseRepository[Item]):
     """Repositório de itens do cardápio com isolamento estrito por restaurante_id."""
 
     def __init__(self, session: AsyncSession) -> None:
         super().__init__(Item, session)
+
+    async def delete_by_id(self, id: uuid.UUID) -> bool:
+        raise TenantIsolationError(
+            "Exclusão física de Item é proibida para preservar o histórico de vendas; "
+            "utilize ItemRepository.soft_delete(item_id=..., restaurante_id=...)."
+        )
 
     async def get_by_id_and_restaurante(
         self,
