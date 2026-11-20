@@ -8,6 +8,9 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+MAX_EXTRA_FILES = 8
+IGNORED_DIRS = {".git", ".venv", "node_modules", "__pycache__", ".pytest_cache", "dist", "build"}
+
 
 def log(msg: str) -> None:
     print(f"[AgentReview] {msg}", flush=True)
@@ -24,10 +27,40 @@ def load_event_data() -> dict:
 
 
 def read_file_safely(path: Path) -> str:
-    if not path.exists():
+    if not path.exists() or not path.is_file():
         return ""
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, "r", encoding="utf-8", errors="ignore") as f:
         return f.read()
+
+
+def list_repo_files() -> list[str]:
+    root = Path(".").resolve()
+    files: list[str] = []
+    for p in root.rglob("*"):
+        if not p.is_file():
+            continue
+        rel_parts = p.relative_to(root).parts
+        if any(part in IGNORED_DIRS for part in rel_parts):
+            continue
+        files.append(str(p.relative_to(root)))
+    return sorted(files)
+
+
+def is_safe_repo_path(rel_path: str) -> bool:
+    """Impede path traversal e bloqueia alteração de workflows ou arquivos .env."""
+    root = Path(".").resolve()
+    try:
+        resolved = (root / rel_path).resolve()
+        resolved.relative_to(root)
+    except (ValueError, RuntimeError):
+        return False
+
+    normalized = rel_path.replace("\\", "/").lstrip("./")
+    if normalized.startswith(".git/") or normalized.startswith(".github/workflows/"):
+        return False
+    if Path(normalized).name.startswith(".env") and Path(normalized).name != ".env.example":
+        return False
+    return True
 
 
 def resolve_model(comment_body: str) -> tuple[str, str]:
@@ -46,6 +79,7 @@ def call_gemini_api(
     model_name: str,
     system_prompt: str,
     user_prompt: str,
+    response_schema: dict,
 ) -> tuple[dict, dict, float]:
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
 
@@ -55,24 +89,7 @@ def call_gemini_api(
         "generationConfig": {
             "temperature": 0.1,
             "response_mime_type": "application/json",
-            "response_schema": {
-                "type": "OBJECT",
-                "properties": {
-                    "commit_message": {
-                        "type": "STRING",
-                        "description": "Mensagem de commit em uma linha no padrão Conventional Commits (ex: 'refactor(review): validar pin vazio').",
-                    },
-                    "explanation": {
-                        "type": "STRING",
-                        "description": "Explicação técnica, concisa e direta em português do que foi alterado.",
-                    },
-                    "updated_file_content": {
-                        "type": "STRING",
-                        "description": "Conteúdo integral atualizado do arquivo modificado, sem omissões ou placeholders.",
-                    },
-                },
-                "required": ["commit_message", "explanation", "updated_file_content"],
-            },
+            "response_schema": response_schema,
         },
     }
 
@@ -100,8 +117,9 @@ def call_gemini_api(
         raise
 
 
-def run_tests(file_path_str: str) -> tuple[bool, str]:
-    if file_path_str.startswith("backend/") and Path("backend").exists():
+def run_tests(changed_paths: list[str]) -> tuple[bool, str]:
+    touches_backend = any(p.startswith("backend/") for p in changed_paths)
+    if touches_backend and Path("backend").exists():
         log("Executando pytest no backend...")
         venv_pytest = Path("backend/.venv/bin/pytest")
         cmd = [str(venv_pytest.resolve()), "-q"] if venv_pytest.exists() else ["pytest", "-q"]
@@ -112,7 +130,7 @@ def run_tests(file_path_str: str) -> tuple[bool, str]:
             text=True,
         )
         return (res.returncode == 0, (res.stdout + "\n" + res.stderr).strip())
-    return (True, "Validação de testes não aplicável ao caminho alterado.")
+    return (True, "Validação de testes não aplicável aos arquivos alterados.")
 
 
 def reply_to_comment(
@@ -147,7 +165,7 @@ def reply_to_comment(
 
 def write_step_summary(
     model_name: str,
-    file_path_str: str,
+    changed_paths: list[str],
     status_label: str,
     tokens_in: int,
     tokens_out: int,
@@ -157,13 +175,14 @@ def write_step_summary(
     if not summary_path:
         return
     total = tokens_in + tokens_out
+    files_str = ", ".join(f"`{p}`" for p in changed_paths) if changed_paths else "nenhum"
     md = (
         f"### 🤖 Agent PR Review Summary\n\n"
         f"| Campo | Valor |\n"
         f"| :--- | :--- |\n"
         f"| **Status** | {status_label} |\n"
         f"| **Modelo** | `{model_name}` |\n"
-        f"| **Arquivo** | `{file_path_str}` |\n"
+        f"| **Arquivos Alterados** | {files_str} |\n"
         f"| **Tokens (Entrada / Saída / Total)** | `{tokens_in:,}` / `{tokens_out:,}` / `{total:,}` |\n"
         f"| **Latência IA** | `{elapsed:.2f}s` |\n"
     )
@@ -174,6 +193,18 @@ def write_step_summary(
 def sanitize_commit_message(raw_msg: str) -> str:
     first_line = raw_msg.strip().splitlines()[0] if raw_msg.strip() else "refactor(review): aplicar ajuste de revisao"
     return first_line[:72]
+
+
+def rollback_changes(snapshots: dict[str, str | None]) -> None:
+    for rel_path, original_content in snapshots.items():
+        p = Path(rel_path)
+        if original_content is None:
+            if p.exists():
+                p.unlink()
+        else:
+            p.parent.mkdir(parents=True, exist_ok=True)
+            with open(p, "w", encoding="utf-8") as f:
+                f.write(original_content)
 
 
 def main() -> None:
@@ -203,7 +234,6 @@ def main() -> None:
     raw_comment_body = comment.get("body", "").strip()
     file_path_str = comment.get("path")
     diff_hunk = comment.get("diff_hunk", "")
-    # Sempre responder no comentário raiz da thread para suportar múltiplos turnos
     thread_comment_id = comment.get("in_reply_to_id") or comment.get("id")
     pull_number = pull_request.get("number")
     repo_full_name = repository.get("full_name")
@@ -221,20 +251,26 @@ def main() -> None:
     model_name, comment_body = resolve_model(raw_comment_body)
     file_content = read_file_safely(target_file)
     agents_rules = read_file_safely(Path("AGENTS.md"))
+    repo_files = list_repo_files()
 
-    system_prompt = f"""Você é o engenheiro responsável por atender revisões de PR no repositório Hstronomia.
-Siga rigorosamente as diretrizes do projeto extraídas de AGENTS.md:
----
-{agents_rules}
----
-Regras de execução (Modo Ponytail):
-- Faça estritamente a menor alteração cirúrgica completa necessária para atender ao comentário do revisor.
-- Não refatore trechos fora do escopo pedido, não adicione dependências novas e evite over-engineering.
-- Preserve isolamento multi-tenant (restaurante_id), precisão Decimal em valores monetários e práticas OWASP.
-- Retorne o arquivo integral atualizado em 'updated_file_content'.
-"""
+    total_tokens_in = 0
+    total_tokens_out = 0
+    total_elapsed = 0.0
 
-    user_prompt = f"""Comentário de revisão no arquivo '{file_path_str}':
+    # --- PASSO 1: Seleção cirúrgica de arquivos extras necessários ---
+    select_schema = {
+        "type": "OBJECT",
+        "properties": {
+            "files_to_read": {
+                "type": "ARRAY",
+                "items": {"type": "STRING"},
+                "description": f"Lista de até {MAX_EXTRA_FILES} caminhos relativos extras do repositório necessários para entender/implementar a mudança (ex: schemas, services, deps, tests). Retorne vazio se apenas o arquivo comentado bastar.",
+            }
+        },
+        "required": ["files_to_read"],
+    }
+
+    select_prompt = f"""Comentário de revisão no arquivo '{file_path_str}':
 "{comment_body}"
 
 Trecho do diff (diff_hunk):
@@ -242,16 +278,19 @@ Trecho do diff (diff_hunk):
 {diff_hunk}
 ```
 
-Conteúdo atual completo de '{file_path_str}':
-```
-{file_content}
-```
-"""
+Arquivos disponíveis no repositório:
+{chr(10).join(repo_files)}
 
-    log(f"Chamando modelo '{model_name}' para '{file_path_str}'...")
+Selecione apenas os arquivos adicionais estritamente necessários para implementar e testar esta mudança (máximo {MAX_EXTRA_FILES}). Não inclua '{file_path_str}' pois ele já será fornecido."""
+
+    log(f"[Passo 1/2] Identificando arquivos relacionados com '{model_name}'...")
     try:
-        ai_response, usage_metadata, elapsed = call_gemini_api(
-            api_key, model_name, system_prompt, user_prompt
+        sel_resp, sel_usage, sel_elapsed = call_gemini_api(
+            api_key,
+            model_name,
+            "Você seleciona o menor conjunto de arquivos necessários para uma revisão de código.",
+            select_prompt,
+            select_schema,
         )
     except Exception as e:
         reply_to_comment(
@@ -263,57 +302,167 @@ Conteúdo atual completo de '{file_path_str}':
         )
         sys.exit(1)
 
-    tokens_in = usage_metadata.get("promptTokenCount", 0)
-    tokens_out = usage_metadata.get("candidatesTokenCount", 0)
-    updated_content = ai_response.get("updated_file_content", "")
-    explanation = ai_response.get("explanation", "Alteração aplicada conforme solicitado.")
-    commit_msg = sanitize_commit_message(ai_response.get("commit_message", ""))
+    total_tokens_in += sel_usage.get("promptTokenCount", 0)
+    total_tokens_out += sel_usage.get("candidatesTokenCount", 0)
+    total_elapsed += sel_elapsed
 
-    if not updated_content or updated_content.strip() == file_content.strip():
-        log("Nenhuma modificação necessária no arquivo.")
-        write_step_summary(model_name, file_path_str, "Sem alterações", tokens_in, tokens_out, elapsed)
+    extra_files: list[str] = []
+    for p in sel_resp.get("files_to_read", [])[:MAX_EXTRA_FILES]:
+        if p != file_path_str and p in repo_files and is_safe_repo_path(p):
+            extra_files.append(p)
+
+    log(f"Arquivos extras selecionados: {extra_files or 'nenhum'}")
+
+    # --- PASSO 2: Edição multi-arquivo ---
+    context_blocks = [f"### Arquivo comentado: {file_path_str}\n```\n{file_content}\n```"]
+    for extra in extra_files:
+        content = read_file_safely(Path(extra))
+        context_blocks.append(f"### Arquivo relacionado: {extra}\n```\n{content}\n```")
+
+    edit_schema = {
+        "type": "OBJECT",
+        "properties": {
+            "commit_message": {
+                "type": "STRING",
+                "description": "Mensagem de commit em uma linha no padrão Conventional Commits.",
+            },
+            "explanation": {
+                "type": "STRING",
+                "description": "Explicação técnica, concisa e direta em português do que foi alterado.",
+            },
+            "changes": {
+                "type": "ARRAY",
+                "description": "Lista de arquivos modificados ou criados. Inclua apenas os arquivos que realmente mudaram.",
+                "items": {
+                    "type": "OBJECT",
+                    "properties": {
+                        "path": {"type": "STRING", "description": "Caminho relativo no repositório."},
+                        "content": {"type": "STRING", "description": "Conteúdo integral atualizado do arquivo."},
+                    },
+                    "required": ["path", "content"],
+                },
+            },
+        },
+        "required": ["commit_message", "explanation", "changes"],
+    }
+
+    system_prompt = f"""Você é o engenheiro responsável por atender revisões de PR no repositório Hstronomia.
+Siga rigorosamente as diretrizes do projeto extraídas de AGENTS.md:
+---
+{agents_rules}
+---
+Regras de execução (Modo Ponytail):
+- Faça estritamente a menor alteração cirúrgica completa necessária para atender ao comentário do revisor.
+- Você pode alterar múltiplos arquivos simultaneamente (ex: schema, service, deps, controller e testes) quando a mudança exigir.
+- Não refatore trechos fora do escopo pedido, não adicione dependências novas e evite over-engineering.
+- Preserve isolamento multi-tenant (restaurante_id), precisão Decimal em valores monetários e práticas OWASP.
+- Em 'changes', inclua apenas arquivos modificados/criados, sempre com o conteúdo integral atualizado.
+"""
+
+    edit_prompt = f"""Comentário de revisão no arquivo '{file_path_str}':
+"{comment_body}"
+
+Trecho do diff (diff_hunk):
+```
+{diff_hunk}
+```
+
+Contexto dos arquivos:
+{chr(10).join(context_blocks)}
+"""
+
+    log(f"[Passo 2/2] Gerando alterações multi-arquivo com '{model_name}'...")
+    try:
+        ai_response, edit_usage, edit_elapsed = call_gemini_api(
+            api_key, model_name, system_prompt, edit_prompt, edit_schema
+        )
+    except Exception as e:
         reply_to_comment(
             repo_full_name,
             pull_number,
             thread_comment_id,
-            f"ℹ️ **Análise concluída** (sem alterações no código):\n\n{explanation}\n\n---\n> 🤖 `{model_name}` • Tokens: `{tokens_in:,}` in / `{tokens_out:,}` out • `{elapsed:.2f}s`",
+            f"❌ **Erro ao gerar alterações com `{model_name}`**: `{e}`",
+            github_token,
+        )
+        sys.exit(1)
+
+    total_tokens_in += edit_usage.get("promptTokenCount", 0)
+    total_tokens_out += edit_usage.get("candidatesTokenCount", 0)
+    total_elapsed += edit_elapsed
+
+    changes = ai_response.get("changes", [])
+    explanation = ai_response.get("explanation", "Alterações aplicadas conforme solicitado.")
+    commit_msg = sanitize_commit_message(ai_response.get("commit_message", ""))
+
+    # Filtra apenas mudanças reais e seguras
+    snapshots: dict[str, str | None] = {}
+    applied_paths: list[str] = []
+
+    for change in changes:
+        rel_path = change.get("path", "").strip()
+        new_content = change.get("content", "")
+        if not rel_path or not is_safe_repo_path(rel_path):
+            log(f"Caminho ignorado por segurança: '{rel_path}'")
+            continue
+
+        p = Path(rel_path)
+        original = read_file_safely(p) if p.exists() else None
+        if original is not None and original.strip() == new_content.strip():
+            continue
+
+        snapshots[rel_path] = original
+        p.parent.mkdir(parents=True, exist_ok=True)
+        with open(p, "w", encoding="utf-8") as f:
+            f.write(new_content)
+        applied_paths.append(rel_path)
+
+    if not applied_paths:
+        log("Nenhuma modificação efetiva detectada.")
+        write_step_summary(model_name, [], "Sem alterações", total_tokens_in, total_tokens_out, total_elapsed)
+        reply_to_comment(
+            repo_full_name,
+            pull_number,
+            thread_comment_id,
+            f"ℹ️ **Análise concluída** (sem alterações no código):\n\n{explanation}\n\n---\n> 🤖 `{model_name}` • Tokens: `{total_tokens_in:,}` in / `{total_tokens_out:,}` out • `{total_elapsed:.2f}s`",
             github_token,
         )
         sys.exit(0)
 
-    with open(target_file, "w", encoding="utf-8") as f:
-        f.write(updated_content)
-
-    tests_ok, test_logs = run_tests(file_path_str)
+    log(f"Arquivos alterados ({len(applied_paths)}): {applied_paths}")
+    tests_ok, test_logs = run_tests(applied_paths)
 
     if not tests_ok:
-        log("Testes falharam. Revertendo alteração.")
-        with open(target_file, "w", encoding="utf-8") as f:
-            f.write(file_content)
-
-        write_step_summary(model_name, file_path_str, "❌ Testes falharam (revertido)", tokens_in, tokens_out, elapsed)
+        log("Testes falharam. Executando rollback atômico.")
+        rollback_changes(snapshots)
+        write_step_summary(
+            model_name, applied_paths, "❌ Testes falharam (revertido)", total_tokens_in, total_tokens_out, total_elapsed
+        )
         erro_msg = (
-            f"❌ **Alteração revertida: a suíte de testes (`pytest`) falhou.**\n\n"
+            f"❌ **Alterações revertidas: a suíte de testes (`pytest`) falhou.**\n\n"
             f"```\n{test_logs[-1500:]}\n```\n\n"
             f"---\n"
-            f"> 🤖 `{model_name}` • Tokens: `{tokens_in:,}` in / `{tokens_out:,}` out • `{elapsed:.2f}s`"
+            f"> 🤖 `{model_name}` • Tokens: `{total_tokens_in:,}` in / `{total_tokens_out:,}` out • `{total_elapsed:.2f}s`"
         )
         reply_to_comment(repo_full_name, pull_number, thread_comment_id, erro_msg, github_token)
         sys.exit(1)
 
     log(f"Testes aprovados. Commitando: {commit_msg}")
-    subprocess.run(["git", "add", str(target_file)], check=True)
+    subprocess.run(["git", "add", "--", *applied_paths], check=True)
     subprocess.run(["git", "commit", "-m", commit_msg], check=True)
     subprocess.run(["git", "push", "origin", branch_name], check=True)
 
-    write_step_summary(model_name, file_path_str, "✅ Aplicado e validado", tokens_in, tokens_out, elapsed)
+    write_step_summary(
+        model_name, applied_paths, "✅ Aplicado e validado", total_tokens_in, total_tokens_out, total_elapsed
+    )
 
+    files_list = "\n".join(f"- `{p}`" for p in applied_paths)
     resposta_pr = (
-        f"✅ **Alteração aplicada e validada!**\n\n"
+        f"✅ **Alterações aplicadas e validadas!**\n\n"
         f"{explanation}\n\n"
+        f"**Arquivos modificados:**\n{files_list}\n\n"
         f"---\n"
         f"> 🤖 **Modelo**: `{model_name}` • **Testes**: aprovados • "
-        f"**Tokens**: `{tokens_in:,}` in / `{tokens_out:,}` out • **Tempo IA**: `{elapsed:.2f}s`"
+        f"**Tokens**: `{total_tokens_in:,}` in / `{total_tokens_out:,}` out • **Tempo IA**: `{total_elapsed:.2f}s`"
     )
     reply_to_comment(repo_full_name, pull_number, thread_comment_id, resposta_pr, github_token)
     log("Fluxo concluído com sucesso.")

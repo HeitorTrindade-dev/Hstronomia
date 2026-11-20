@@ -33,7 +33,6 @@ jobs:
           cache-dependency-glob: "backend/pyproject.toml"
 
       - name: Instalar dependências de teste do backend
-        if: startsWith(github.event.comment.path, 'backend/')
         working-directory: backend
         run: |
           uv venv --python 3.12 .venv
