@@ -39,6 +39,7 @@ As instruções detalhadas por área de atuação estão organizadas na pasta [a
      - **Criação da Issue**: Se não existir, criar no GitHub com o template oficial ([.github/ISSUE_TEMPLATE/feature.md](file:///home/heitor/Documentos/workspace/projetos/pessoais/Hstronomia/.github/ISSUE_TEMPLATE/feature.md)) sem emojis.
      - **Padrão de Branches (`feat/<numero>-...`)**: Todo e qualquer desenvolvimento **deve ser feito em uma branch no padrão `feat/<numero>-<nome-da-feature>`** (ex: `feat/2-conexao-async-alembic`, `feat/5-auth-jwt-dono`, ou `fix/<numero>-...` para correções). **Nunca desenvolver diretamente na `main`**.
      - **Padrão de Commits (`feat: ...`)**: Todas as mensagens de commit **devem seguir estritamente o padrão Conventional Commits** (ex: `feat: configurar backend e docker compose`, `fix: corrigir calculo da taxa de servico`).
+     - **Commits Atômicos em Issues Grandes**: Se a issue for extensa ou abranger múltiplas camadas (ex: model + service + controller), **deve-se quebrar o trabalho em commits atômicos e incrementais** ao longo do desenvolvimento, evitando commits gigantescos com tudo misturado.
      - **Abertura de Pull Request (PR)**: Ao concluir a implementação e os testes da issue, o agente **deve obrigatoriamente abrir um Pull Request** via GitHub CLI:
        ```bash
        gh pr create --title "feat: <descricao da entrega>" --body "Closes #<numero-da-issue>" --base main

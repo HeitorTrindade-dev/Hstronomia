@@ -34,7 +34,7 @@ Esta pasta centraliza todas as instruções, regras de negócio e convenções p
   - Antes de criar a issue, verifique as labels existentes (`gh label list`). Se necessário, crie a nova label (`gh label create`) e aplique todas as labels cabíveis na abertura da issue.
 - **Padrão de Branches, Commits e Pull Requests**:
   - Branches: sempre no padrão `feat/<numero>-<nome-da-feature>` (ou `fix/<numero>-<nome>` para correções). Ex: `feat/2-conexao-async-alembic`.
-  - Commits: sempre no padrão Conventional Commits (`feat: <mensagem>`, `fix: <mensagem>`).
+  - Commits: sempre no padrão Conventional Commits (`feat: <mensagem>`, `fix: <mensagem>`). Em tarefas extensas, quebre em commits atômicos por camada/etapa.
   - Pull Requests: ao concluir e testar a issue, abra o PR via `gh pr create --title "..." --body "Closes #..."`.
 - **Testes Obrigatórios**: Regras de negócio em Services devem ser cobertas por testes automatizados antes do PR.
 - **Isolamento de Restaurante**: Nenhuma query, leitura ou gravação de dados operacionais (itens, comandas, despesas) pode ser feita sem filtrar explicitamente pelo `restaurante_id`.
