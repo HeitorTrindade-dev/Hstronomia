@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from typing import List, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, String, func
 from sqlalchemy.dialects.postgresql import UUID
@@ -29,7 +29,7 @@ class Dono(Base):
         nullable=False,
     )
 
-    restaurantes: Mapped[List["Restaurante"]] = relationship(
+    restaurantes: Mapped[list["Restaurante"]] = relationship(
         "Restaurante",
         back_populates="dono",
         cascade="all, delete-orphan",

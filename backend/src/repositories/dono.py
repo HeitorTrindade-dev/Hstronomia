@@ -1,4 +1,3 @@
-from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,7 +9,7 @@ class DonoRepository(BaseRepository[Dono]):
     def __init__(self, session: AsyncSession) -> None:
         super().__init__(Dono, session)
 
-    async def get_by_email(self, email: str) -> Optional[Dono]:
+    async def get_by_email(self, email: str) -> Dono | None:
         return await self.get_by(Dono.email, email.strip().lower())
 
     async def create(self, nome: str, email: str, senha_hash: str) -> Dono:

@@ -7,7 +7,11 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.database import get_db
-from src.core.security import create_access_token, hash_password
+from src.core.security import (
+    create_access_token,
+    create_operational_token,
+    hash_password,
+)
 from src.main import app
 from src.repositories.comanda import ComandaRepository
 from src.repositories.dono import DonoRepository
@@ -102,12 +106,8 @@ def _auth_headers(dono, rest) -> dict[str, dict[str, str]]:
     token_dono = create_access_token(
         {"sub": str(dono.id), "email": dono.email, "role": "dono"}
     )
-    token_garcom = create_access_token(
-        {"sub": str(rest.id), "restaurante_id": str(rest.id), "role": "garcom"}
-    )
-    token_cozinha = create_access_token(
-        {"sub": str(rest.id), "restaurante_id": str(rest.id), "role": "cozinha"}
-    )
+    token_garcom = create_operational_token(rest.id, "garcom", rest.codigo_garcom)
+    token_cozinha = create_operational_token(rest.id, "cozinha", rest.codigo_cozinha)
     return {
         "dono": {"Authorization": f"Bearer {token_dono}"},
         "garcom": {"Authorization": f"Bearer {token_garcom}"},

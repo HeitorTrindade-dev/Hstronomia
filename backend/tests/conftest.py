@@ -1,12 +1,17 @@
+from collections.abc import AsyncGenerator
+
 import pytest
 import pytest_asyncio
-from typing import AsyncGenerator
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from src.core.database import Base
-from src.core.rate_limit import dono_login_rate_limiter, operational_login_rate_limiter
 # Import all models to register with Base.metadata
 import src.models  # noqa: F401
+from src.core.config import settings
+from src.core.database import Base
+from src.core.rate_limit import dono_login_rate_limiter, operational_login_rate_limiter
+
+# Usa custo mínimo (rounds=4) durante a suíte de testes para execução rápida
+settings.BCRYPT_ROUNDS = 4
 
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 

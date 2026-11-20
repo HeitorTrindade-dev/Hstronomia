@@ -1,5 +1,5 @@
 import uuid
-from typing import Any, Generic, List, Optional, Type, TypeVar, Union
+from typing import Any, Generic, TypeVar
 
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,28 +12,28 @@ ModelType = TypeVar("ModelType", bound=Base)
 class BaseRepository(Generic[ModelType]):
     """Repositório base genérico com operações fundamentais de consulta e persistência."""
 
-    def __init__(self, model: Type[ModelType], session: AsyncSession) -> None:
+    def __init__(self, model: type[ModelType], session: AsyncSession) -> None:
         self.model = model
         self.session = session
 
-    async def get_by_id(self, id: uuid.UUID) -> Optional[ModelType]:
+    async def get_by_id(self, id: uuid.UUID) -> ModelType | None:
         return await self.get_by(self.model.id, id)
 
-    async def get_by(self, field: Union[str, Any], value: Any) -> Optional[ModelType]:
+    async def get_by(self, field: str | Any, value: Any) -> ModelType | None:
         """Busca um único registro filtrando por qualquer coluna/atributo."""
         column = getattr(self.model, field) if isinstance(field, str) else field
         stmt = select(self.model).where(column == value)
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def list_by(self, field: Union[str, Any], value: Any) -> List[ModelType]:
+    async def list_by(self, field: str | Any, value: Any) -> list[ModelType]:
         """Lista múltiplos registros filtrando por qualquer coluna/atributo."""
         column = getattr(self.model, field) if isinstance(field, str) else field
         stmt = select(self.model).where(column == value)
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
-    async def list_all(self, limit: int = 100, offset: int = 0) -> List[ModelType]:
+    async def list_all(self, limit: int = 100, offset: int = 0) -> list[ModelType]:
         stmt = select(self.model).limit(limit).offset(offset)
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
@@ -58,16 +58,16 @@ class TenantBaseRepository(BaseRepository[ModelType]):
             "entidades operacionais exigem filtragem explícita por restaurante_id (proteção IDOR)."
         )
 
-    async def get_by_id(self, id: uuid.UUID) -> Optional[ModelType]:
+    async def get_by_id(self, id: uuid.UUID) -> ModelType | None:
         self._bloquear_acesso_sem_tenant("get_by_id")
 
-    async def get_by(self, field: Union[str, Any], value: Any) -> Optional[ModelType]:
+    async def get_by(self, field: str | Any, value: Any) -> ModelType | None:
         self._bloquear_acesso_sem_tenant("get_by")
 
-    async def list_by(self, field: Union[str, Any], value: Any) -> List[ModelType]:
+    async def list_by(self, field: str | Any, value: Any) -> list[ModelType]:
         self._bloquear_acesso_sem_tenant("list_by")
 
-    async def list_all(self, limit: int = 100, offset: int = 0) -> List[ModelType]:
+    async def list_all(self, limit: int = 100, offset: int = 0) -> list[ModelType]:
         self._bloquear_acesso_sem_tenant("list_all")
 
     async def delete_by_id(self, id: uuid.UUID) -> bool:

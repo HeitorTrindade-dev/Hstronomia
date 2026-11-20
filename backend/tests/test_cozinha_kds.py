@@ -7,7 +7,11 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.database import get_db
-from src.core.security import create_access_token, hash_password
+from src.core.security import (
+    create_access_token,
+    create_operational_token,
+    hash_password,
+)
 from src.main import app
 from src.models.comanda import Comanda
 from src.models.item_comanda import ItemComanda
@@ -227,12 +231,10 @@ async def test_kds_fila_fifo_contexto_filtros_e_paginacao(db_session: AsyncSessi
         criado_em=base_time + timedelta(seconds=5),
     )
 
-    token_cozinha_a = create_access_token(
-        {
-            "sub": str(cenario["rest_a1"].id),
-            "restaurante_id": str(cenario["rest_a1"].id),
-            "role": "cozinha",
-        }
+    token_cozinha_a = create_operational_token(
+        cenario["rest_a1"].id,
+        "cozinha",
+        cenario["rest_a1"].codigo_cozinha,
     )
 
     async def override_get_db():
@@ -360,12 +362,10 @@ async def test_kds_maquina_estados_estrita_e_comanda_fechada(db_session: AsyncSe
         status_item="pendente",
     )
 
-    token_cozinha_a = create_access_token(
-        {
-            "sub": str(cenario["rest_a1"].id),
-            "restaurante_id": str(cenario["rest_a1"].id),
-            "role": "cozinha",
-        }
+    token_cozinha_a = create_operational_token(
+        cenario["rest_a1"].id,
+        "cozinha",
+        cenario["rest_a1"].codigo_cozinha,
     )
 
     async def override_get_db():
@@ -482,26 +482,20 @@ async def test_kds_rbac_idor_e_dono_multiplos_restaurantes(db_session: AsyncSess
     token_dono_b = create_access_token(
         {"sub": str(cenario["dono_b"].id), "email": cenario["dono_b"].email, "role": "dono"}
     )
-    token_garcom_a = create_access_token(
-        {
-            "sub": str(cenario["rest_a1"].id),
-            "restaurante_id": str(cenario["rest_a1"].id),
-            "role": "garcom",
-        }
+    token_garcom_a = create_operational_token(
+        cenario["rest_a1"].id,
+        "garcom",
+        cenario["rest_a1"].codigo_garcom,
     )
-    token_cozinha_a = create_access_token(
-        {
-            "sub": str(cenario["rest_a1"].id),
-            "restaurante_id": str(cenario["rest_a1"].id),
-            "role": "cozinha",
-        }
+    token_cozinha_a = create_operational_token(
+        cenario["rest_a1"].id,
+        "cozinha",
+        cenario["rest_a1"].codigo_cozinha,
     )
-    token_cozinha_b = create_access_token(
-        {
-            "sub": str(cenario["rest_b"].id),
-            "restaurante_id": str(cenario["rest_b"].id),
-            "role": "cozinha",
-        }
+    token_cozinha_b = create_operational_token(
+        cenario["rest_b"].id,
+        "cozinha",
+        cenario["rest_b"].codigo_cozinha,
     )
 
     async def override_get_db():

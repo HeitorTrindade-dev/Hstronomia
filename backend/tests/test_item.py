@@ -5,7 +5,11 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.database import get_db
-from src.core.security import create_access_token, hash_password
+from src.core.security import (
+    create_access_token,
+    create_operational_token,
+    hash_password,
+)
 from src.main import app
 from src.repositories.dono import DonoRepository
 from src.repositories.item import ItemRepository
@@ -147,12 +151,8 @@ async def test_endpoints_crud_itens_rbac_e_idor(db_session: AsyncSession):
 
     token_dono_a = create_access_token({"sub": str(dono_a.id), "email": dono_a.email, "role": "dono"})
     token_dono_b = create_access_token({"sub": str(dono_b.id), "email": dono_b.email, "role": "dono"})
-    token_garcom_a = create_access_token(
-        {"sub": str(rest_a.id), "restaurante_id": str(rest_a.id), "role": "garcom"}
-    )
-    token_cozinha_a = create_access_token(
-        {"sub": str(rest_a.id), "restaurante_id": str(rest_a.id), "role": "cozinha"}
-    )
+    token_garcom_a = create_operational_token(rest_a.id, "garcom", rest_a.codigo_garcom)
+    token_cozinha_a = create_operational_token(rest_a.id, "cozinha", rest_a.codigo_cozinha)
 
     async def override_get_db():
         yield db_session
@@ -323,12 +323,8 @@ async def test_disponibilidade_soft_delete_e_filtro_estrito_garcom(db_session: A
 
     token_dono_a = create_access_token({"sub": str(dono_a.id), "email": dono_a.email, "role": "dono"})
     token_dono_b = create_access_token({"sub": str(dono_b.id), "email": dono_b.email, "role": "dono"})
-    token_garcom_a = create_access_token(
-        {"sub": str(rest_a.id), "restaurante_id": str(rest_a.id), "role": "garcom"}
-    )
-    token_cozinha_a = create_access_token(
-        {"sub": str(rest_a.id), "restaurante_id": str(rest_a.id), "role": "cozinha"}
-    )
+    token_garcom_a = create_operational_token(rest_a.id, "garcom", rest_a.codigo_garcom)
+    token_cozinha_a = create_operational_token(rest_a.id, "cozinha", rest_a.codigo_cozinha)
 
     async def override_get_db():
         yield db_session

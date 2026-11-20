@@ -3,7 +3,12 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.database import get_db
-from src.core.security import hash_password, verify_password, create_access_token, decode_access_token
+from src.core.security import (
+    create_access_token,
+    decode_access_token,
+    hash_password,
+    verify_password,
+)
 from src.main import app
 from src.repositories.restaurante import RestauranteRepository
 
@@ -89,7 +94,7 @@ async def test_auth_endpoints_flow(db_session: AsyncSession):
         import uuid
         dono_id = uuid.UUID(data_cad["id"])
         restaurante_repo = RestauranteRepository(db_session)
-        restaurante = await restaurante_repo.create(
+        await restaurante_repo.create(
             dono_id=dono_id,
             nome="Pizzaria Bella",
             slug="pizzaria-bella",
