@@ -3,6 +3,7 @@ import uuid
 from decimal import ROUND_HALF_UP, Decimal
 
 from fastapi import HTTPException, status
+from sqlalchemy.exc import MultipleResultsFound
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.comanda import Comanda
@@ -14,6 +15,7 @@ from src.schemas.comanda import ComandaCreate, ItemComandaCreate
 
 logger = logging.getLogger(__name__)
 CENTAVOS = Decimal("0.01")
+MAX_VALOR_MONETARIO = Decimal("99999999.99")
 
 
 class ComandaService:
@@ -33,10 +35,23 @@ class ComandaService:
         data: ComandaCreate,
     ) -> Comanda:
         if data.numero_mesa is not None:
-            comanda_existente = await self.comanda_repo.get_aberta_por_mesa(
-                restaurante_id,
-                data.numero_mesa,
-            )
+            try:
+                comanda_existente = await self.comanda_repo.get_aberta_por_mesa(
+                    restaurante_id,
+                    data.numero_mesa,
+                )
+            except MultipleResultsFound:
+                logger.warning(
+                    "Múltiplas comandas abertas encontradas para a mesa "
+                    "(restaurante_id=%s, numero_mesa=%s)",
+                    restaurante_id,
+                    data.numero_mesa,
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Já existe uma comanda aberta para esta mesa.",
+                ) from None
+
             if comanda_existente is not None:
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
@@ -105,6 +120,27 @@ class ComandaService:
         nome_congelado = item.nome.strip()
         preco_congelado = self.quantizar_moeda(Decimal(item.preco))
 
+        itens = await self.item_comanda_repo.list_by_comanda(comanda.id, restaurante_id)
+        subtotal_existente = sum(
+            (Decimal(ic.preco_unitario) * Decimal(ic.quantidade) for ic in itens),
+            Decimal("0.00"),
+        )
+        subtotal = self.quantizar_moeda(
+            subtotal_existente + (preco_congelado * Decimal(data.quantidade))
+        )
+        taxa_servico = self.quantizar_moeda(Decimal(comanda.taxa_servico))
+        desconto = self.quantizar_moeda(Decimal(comanda.desconto))
+        valor_total = max(
+            Decimal("0.00"),
+            self.quantizar_moeda(subtotal + taxa_servico - desconto),
+        )
+
+        if subtotal > MAX_VALOR_MONETARIO or valor_total > MAX_VALOR_MONETARIO:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="O valor total da comanda excede o limite máximo suportado.",
+            )
+
         item_comanda = await self.item_comanda_repo.create(
             comanda_id=comanda.id,
             restaurante_id=restaurante_id,
@@ -119,20 +155,6 @@ class ComandaService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Comanda não encontrada.",
             )
-
-        itens = await self.item_comanda_repo.list_by_comanda(comanda.id, restaurante_id)
-        subtotal = self.quantizar_moeda(
-            sum(
-                (Decimal(ic.preco_unitario) * Decimal(ic.quantidade) for ic in itens),
-                Decimal("0.00"),
-            )
-        )
-        taxa_servico = self.quantizar_moeda(Decimal(comanda.taxa_servico))
-        desconto = self.quantizar_moeda(Decimal(comanda.desconto))
-        valor_total = max(
-            Decimal("0.00"),
-            self.quantizar_moeda(subtotal + taxa_servico - desconto),
-        )
 
         await self.comanda_repo.update_totais(
             comanda_id=comanda.id,

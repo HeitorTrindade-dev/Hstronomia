@@ -3,13 +3,20 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    StrictInt,
+    field_validator,
+    model_validator,
+)
 
 
 class ComandaCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    numero_mesa: int | None = Field(default=None, ge=1, le=9999)
+    numero_mesa: StrictInt | None = Field(default=None, ge=1, le=9999)
     identificador: str | None = Field(default=None, max_length=100)
     tipo_atendimento: Literal["mesa", "balcao", "viagem"] = "mesa"
 
@@ -18,6 +25,8 @@ class ComandaCreate(BaseModel):
     def normalizar_identificador(cls, value: str | None) -> str | None:
         if value is None:
             return None
+        if "\x00" in value:
+            raise ValueError("O identificador não pode conter caracteres nulos.")
         limpo = value.strip()
         return limpo or None
 
@@ -52,7 +61,7 @@ class ItemComandaCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     item_id: uuid.UUID
-    quantidade: int = Field(default=1, ge=1, le=999)
+    quantidade: StrictInt = Field(default=1, ge=1, le=999)
     observacao: str | None = Field(default=None, max_length=500)
 
     @field_validator("observacao")
@@ -60,6 +69,8 @@ class ItemComandaCreate(BaseModel):
     def normalizar_observacao(cls, value: str | None) -> str | None:
         if value is None:
             return None
+        if "\x00" in value:
+            raise ValueError("A observação não pode conter caracteres nulos.")
         limpa = value.strip()
         return limpa or None
 
