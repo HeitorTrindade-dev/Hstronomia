@@ -33,7 +33,7 @@ Esta pasta centraliza todas as instruções, regras de negócio e convenções p
   - Nenhuma linha de código deve ser escrita sem uma issue correspondente no GitHub.
   - Antes de criar a issue, verifique as labels existentes (`gh label list`). Se necessário, crie a nova label (`gh label create`) e aplique todas as labels cabíveis na abertura da issue.
 - **Padrão de Branches, Commits e Pull Requests**:
-  - Branches: sempre no padrão `feat/<nome-da-feature>` (ou `fix/<nome>` para correções).
+  - Branches: sempre no padrão `feat/<numero>-<nome-da-feature>` (ou `fix/<numero>-<nome>` para correções). Ex: `feat/2-conexao-async-alembic`.
   - Commits: sempre no padrão Conventional Commits (`feat: <mensagem>`, `fix: <mensagem>`).
   - Pull Requests: ao concluir e testar a issue, abra o PR via `gh pr create --title "..." --body "Closes #..."`.
 - **Testes Obrigatórios**: Regras de negócio em Services devem ser cobertas por testes automatizados antes do PR.
