@@ -20,6 +20,8 @@ class ItemComandaRepository(BaseRepository[ItemComanda]):
         self,
         item_comanda_id: uuid.UUID,
         restaurante_id: uuid.UUID,
+        *,
+        carregar_comanda: bool = False,
     ) -> ItemComanda | None:
         stmt = (
             select(ItemComanda)
@@ -29,6 +31,8 @@ class ItemComandaRepository(BaseRepository[ItemComanda]):
                 Comanda.restaurante_id == restaurante_id,
             )
         )
+        if carregar_comanda:
+            stmt = stmt.options(selectinload(ItemComanda.comanda))
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
@@ -67,7 +71,7 @@ class ItemComandaRepository(BaseRepository[ItemComanda]):
                 Comanda.status == "aberta",
                 ItemComanda.status.in_(statuses),
             )
-            .order_by(ItemComanda.criado_em.asc())
+            .order_by(ItemComanda.criado_em.asc(), ItemComanda.id.asc())
             .limit(limit)
             .offset(offset)
         )
@@ -113,8 +117,13 @@ class ItemComandaRepository(BaseRepository[ItemComanda]):
         item_comanda_id: uuid.UUID,
         restaurante_id: uuid.UUID,
         status: str,
+        carregar_comanda: bool = False,
     ) -> ItemComanda | None:
-        item_comanda = await self.get_by_id_and_restaurante(item_comanda_id, restaurante_id)
+        item_comanda = await self.get_by_id_and_restaurante(
+            item_comanda_id,
+            restaurante_id,
+            carregar_comanda=carregar_comanda,
+        )
         if not item_comanda:
             return None
 
