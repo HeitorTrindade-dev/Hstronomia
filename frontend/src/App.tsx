@@ -10,6 +10,8 @@ import { AcessoOperacional } from './pages/auth/AcessoOperacional'
 
 // Painéis Operacionais e Administrativos
 import { AdminDashboardPage } from './pages/admin/AdminDashboardPage'
+import { Restaurantes } from './pages/admin/Restaurantes'
+import { Cardapio } from './pages/admin/Cardapio'
 import { GarcomDashboardPage } from './pages/garcom/GarcomDashboardPage'
 import { CozinhaKdsPage } from './pages/cozinha/CozinhaKdsPage'
 import { DesignSystemPage } from './pages/DesignSystemPage'
@@ -65,10 +67,26 @@ export default function App() {
 
           {/* Rotas Protegidas - Dono */}
           <Route
-            path="/admin/*"
+            path="/admin"
             element={
               <ProtectedRoute allowedRoles={['dono']}>
                 <AdminDashboardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/cardapio"
+            element={
+              <ProtectedRoute allowedRoles={['dono']}>
+                <Cardapio />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/restaurantes"
+            element={
+              <ProtectedRoute allowedRoles={['dono']}>
+                <Restaurantes />
               </ProtectedRoute>
             }
           />

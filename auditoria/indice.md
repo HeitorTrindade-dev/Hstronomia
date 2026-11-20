@@ -8,6 +8,7 @@ Registro central de todas as mudanças significativas realizadas no projeto por 
 
 | Código | Data | Título | Status | Arquivo |
 | :--- | :--- | :--- | :--- | :--- |
+| **0025** | 2026-11-20 | Painel do Dono: Gestão Multi-Restaurante e Cardápio Completo | Concluído | [0025-painel-dono-restaurantes-e-cardapio.md](file:///home/heitor/Documentos/workspace/projetos/pessoais/Hstronomia/auditoria/0025-painel-dono-restaurantes-e-cardapio.md) |
 | **0024** | 2026-11-20 | Telas de Autenticação: Login, Cadastro e Terminal por PIN com Keypad Touch | Concluído | [0024-telas-autenticacao-login-cadastro-pin-keypad.md](file:///home/heitor/Documentos/workspace/projetos/pessoais/Hstronomia/auditoria/0024-telas-autenticacao-login-cadastro-pin-keypad.md) |
 | **0023** | 2026-11-20 | Roteamento, Cliente HTTP Axios e Contexto de Autenticação Multi-Perfil | Concluído | [0023-roteamento-cliente-http-auth-context.md](file:///home/heitor/Documentos/workspace/projetos/pessoais/Hstronomia/auditoria/0023-roteamento-cliente-http-auth-context.md) |
 | **0022** | 2026-11-20 | Fundação de UI, Componentes Base, TopBar Unificada e Orquestração Docker | Concluído | [0022-fundacao-ui-componentes-base-e-docker.md](file:///home/heitor/Documentos/workspace/projetos/pessoais/Hstronomia/auditoria/0022-fundacao-ui-componentes-base-e-docker.md) |
