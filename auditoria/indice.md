@@ -9,6 +9,7 @@ Registro central de todas as mudanças significativas realizadas no projeto por 
 | Código | Data | Título | Status | Arquivo |
 | :--- | :--- | :--- | :--- | :--- |
 | **0011** | 2026-11-20 | Endpoints e Fluxo de Status da Cozinha (KDS) | Concluído | [0011-kds-cozinha-status.md](file:///home/heitor/Documentos/workspace/projetos/pessoais/Hstronomia/auditoria/0011-kds-cozinha-status.md) |
+| **0010** | 2026-11-20 | Service de Pedidos com Congelamento de Preço | Concluído | [0010-service-pedidos-congelamento.md](file:///home/heitor/Documentos/workspace/projetos/pessoais/Hstronomia/auditoria/0010-service-pedidos-congelamento.md) |
 | **0009** | 2026-11-20 | Models e Repositories de Comanda e ItemComanda | Concluído | [0009-models-repositories-comanda.md](file:///home/heitor/Documentos/workspace/projetos/pessoais/Hstronomia/auditoria/0009-models-repositories-comanda.md) |
 | **0008** | 2026-11-20 | Controle de Disponibilidade e Soft-Delete de Itens | Concluído | [0008-disponibilidade-soft-delete-itens.md](file:///home/heitor/Documentos/workspace/projetos/pessoais/Hstronomia/auditoria/0008-disponibilidade-soft-delete-itens.md) |
 | **0007** | 2026-11-20 | CRUD de Itens do Cardápio | Concluído | [0007-crud-itens-cardapio.md](file:///home/heitor/Documentos/workspace/projetos/pessoais/Hstronomia/auditoria/0007-crud-itens-cardapio.md) |
