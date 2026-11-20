@@ -1,0 +1,45 @@
+name: Agent PR Review Assistant
+
+on:
+  pull_request_review_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  review_handler:
+    if: github.actor == 'HeitorTrindade-dev'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch do PR
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Instalar dependências para execução de testes
+        run: |
+          cd backend
+          python -m pip install --upgrade pip
+          pip install pytest pytest-asyncio anyio httpx aiosqlite sqlalchemy pydantic pydantic-settings passlib bcrypt pyjwt
+          cd ..
+
+      - name: Configurar Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Executar Agent PR Review
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python .github/scripts/agent_pr_review.py
