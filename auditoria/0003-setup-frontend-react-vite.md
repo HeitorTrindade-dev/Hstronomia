@@ -1,7 +1,7 @@
 # 0003 — Setup Inicial do Frontend (React, Vite, TypeScript, Tailwind)
 
 - **Data**: 2026-11-20
-- **Autor/Agente**: Antigravity (Google DeepMind)
+- **Autor/Agente**: Antigravity (Modelo: Gemini 3.8 Flash)
 - **Tipo de Mudança**: Setup / Frontend / UI
 - **Issue Vinculada**: [#3](https://github.com/HeitorTrindade-dev/Hstronomia/issues/3)
 - **Status**: Concluído

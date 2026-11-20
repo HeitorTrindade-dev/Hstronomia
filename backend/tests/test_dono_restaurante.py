@@ -18,17 +18,26 @@ async def test_dono_repository_crud(db_session: AsyncSession):
     )
     assert dono.id is not None
     assert dono.nome == "Carlos Silva"
-    assert dono.email == "carlos@restaurante.com"  # Normalizado para minúsculas
+    assert dono.email == "carlos@restaurante.com"
 
     # 2. Buscar por email
     encontrado = await repo.get_by_email("carlos@restaurante.com")
     assert encontrado is not None
     assert encontrado.id == dono.id
 
-    # 3. Buscar por ID
+    # 3. Buscar por ID (herdado do BaseRepository)
     por_id = await repo.get_by_id(dono.id)
     assert por_id is not None
     assert por_id.email == "carlos@restaurante.com"
+
+    # 4. List all (herdado do BaseRepository)
+    todos = await repo.list_all()
+    assert len(todos) == 1
+
+    # 5. Delete by ID (herdado do BaseRepository)
+    removido = await repo.delete_by_id(dono.id)
+    assert removido is True
+    assert await repo.get_by_id(dono.id) is None
 
 
 @pytest.mark.asyncio
@@ -51,7 +60,7 @@ async def test_restaurante_repository_crud_e_idor(db_session: AsyncSession):
         codigo_cozinha="654321",
     )
     assert restaurante.id is not None
-    assert restaurante.slug == "bistro-maria"  # Normalizado
+    assert restaurante.slug == "bistro-maria"
     assert restaurante.dono_id == dono.id
 
     # 2. Buscar por slug
@@ -59,12 +68,17 @@ async def test_restaurante_repository_crud_e_idor(db_session: AsyncSession):
     assert por_slug is not None
     assert por_slug.id == restaurante.id
 
-    # 3. Listar por dono_id
+    # 3. Buscar por ID (herdado do BaseRepository)
+    por_id = await rest_repo.get_by_id(restaurante.id)
+    assert por_id is not None
+    assert por_id.nome == "Bistrô da Maria"
+
+    # 4. Listar por dono_id
     lista = await rest_repo.get_by_dono_id(dono.id)
     assert len(lista) == 1
     assert lista[0].id == restaurante.id
 
-    # 4. Atualizar PINs com dono correto
+    # 5. Atualizar PINs com dono correto
     atualizado = await rest_repo.update_pins(
         restaurante_id=restaurante.id,
         dono_id=dono.id,
@@ -73,11 +87,11 @@ async def test_restaurante_repository_crud_e_idor(db_session: AsyncSession):
     assert atualizado is not None
     assert atualizado.codigo_garcom == "999888"
 
-    # 5. Tentativa de IDOR: dono falso tentando alterar PINs
+    # 6. Tentativa de IDOR: dono intruso
     dono_intruso_id = uuid.uuid4()
     bloqueado = await rest_repo.update_pins(
         restaurante_id=restaurante.id,
         dono_id=dono_intruso_id,
         codigo_garcom="000000",
     )
-    assert bloqueado is None  # IDOR bloqueado com sucesso
+    assert bloqueado is None

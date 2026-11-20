@@ -1,7 +1,7 @@
 # 0004 — Models e Repositories de Dono e Restaurante
 
 - **Data**: 2026-11-20
-- **Autor/Agente**: Antigravity (Google DeepMind)
+- **Autor/Agente**: Antigravity (Modelo: Gemini 3.8 Flash)
 - **Tipo de Mudança**: Backend / Database / Models / Repositories
 - **Issue Vinculada**: [#4](https://github.com/HeitorTrindade-dev/Hstronomia/issues/4)
 - **Status**: Concluído
@@ -20,8 +20,9 @@ Implementação da Issue #4: criação dos modelos de persistência SQLAlchemy 2
    - `Restaurante`: UUID PK, `dono_id` FK (indexada), `nome`, `slug` único normalizado, `codigo_garcom`, `codigo_cozinha`, `criado_em`.
 
 2. **Repositórios (`backend/src/repositories/`)**:
-   - `DonoRepository`: métodos assíncronos `get_by_id`, `get_by_email` e `create`.
-   - `RestauranteRepository`: métodos assíncronos `get_by_id`, `get_by_slug`, `get_by_dono_id`, `create` e `update_pins` (com validação estrita de posse `dono_id` contra IDOR).
+   - `BaseRepository[ModelType]`: repositório genérico com operações fundamentais (`get_by_id`, `list_all`, `delete_by_id`).
+   - `DonoRepository`: herda de `BaseRepository[Dono]`, com métodos específicos `get_by_email` e `create`.
+   - `RestauranteRepository`: herda de `BaseRepository[Restaurante]`, com `get_by_slug`, `get_by_dono_id`, `create` e `update_pins` (com validação estrita de posse `dono_id` contra IDOR).
 
 3. **Migração Alembic (`backend/alembic/versions/0001_criar_tabelas_dono_e_restaurante.py`)**:
    - DDL explícito com índices em `email`, `slug` e `dono_id`.
@@ -37,6 +38,7 @@ Implementação da Issue #4: criação dos modelos de persistência SQLAlchemy 2
 - [`backend/src/models/dono.py`](file:///home/heitor/Documentos/workspace/projetos/pessoais/Hstronomia/backend/src/models/dono.py): Modelo Dono.
 - [`backend/src/models/restaurante.py`](file:///home/heitor/Documentos/workspace/projetos/pessoais/Hstronomia/backend/src/models/restaurante.py): Modelo Restaurante.
 - [`backend/src/models/__init__.py`](file:///home/heitor/Documentos/workspace/projetos/pessoais/Hstronomia/backend/src/models/__init__.py): Registro de modelos.
+- [`backend/src/repositories/base.py`](file:///home/heitor/Documentos/workspace/projetos/pessoais/Hstronomia/backend/src/repositories/base.py): Repositório base genérico.
 - [`backend/src/repositories/dono.py`](file:///home/heitor/Documentos/workspace/projetos/pessoais/Hstronomia/backend/src/repositories/dono.py): Repositório Dono.
 - [`backend/src/repositories/restaurante.py`](file:///home/heitor/Documentos/workspace/projetos/pessoais/Hstronomia/backend/src/repositories/restaurante.py): Repositório Restaurante com trava IDOR.
 - [`backend/src/repositories/__init__.py`](file:///home/heitor/Documentos/workspace/projetos/pessoais/Hstronomia/backend/src/repositories/__init__.py): Exportação de repositórios.

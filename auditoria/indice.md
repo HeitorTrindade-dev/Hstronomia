@@ -21,6 +21,7 @@ Sempre que uma mudança significativa for implementada:
 1. Criar um novo arquivo em `auditoria/` nomeado sequencialmente: `XXXX-titulo-da-mudanca.md` (ex: `0005-autenticacao-dono-jwt.md`).
 2. Adicionar uma nova linha no topo da tabela deste arquivo `indice.md`.
 3. Detalhar:
+   - Autor/Agente e Modelo de IA utilizado (ex: `Antigravity (Modelo: Gemini 3.8 Flash)`)
    - Motivação
    - Decisões Técnicas / Arquiteturais
    - Arquivos Criados ou Modificados

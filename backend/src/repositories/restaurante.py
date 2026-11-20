@@ -5,16 +5,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.restaurante import Restaurante
+from src.repositories.base import BaseRepository
 
 
-class RestauranteRepository:
+class RestauranteRepository(BaseRepository[Restaurante]):
     def __init__(self, session: AsyncSession) -> None:
-        self.session = session
-
-    async def get_by_id(self, restaurante_id: uuid.UUID) -> Optional[Restaurante]:
-        stmt = select(Restaurante).where(Restaurante.id == restaurante_id)
-        result = await self.session.execute(stmt)
-        return result.scalar_one_or_none()
+        super().__init__(Restaurante, session)
 
     async def get_by_slug(self, slug: str) -> Optional[Restaurante]:
         stmt = select(Restaurante).where(Restaurante.slug == slug.strip().lower())

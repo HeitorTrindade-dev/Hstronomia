@@ -1,20 +1,15 @@
-import uuid
 from typing import Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.dono import Dono
+from src.repositories.base import BaseRepository
 
 
-class DonoRepository:
+class DonoRepository(BaseRepository[Dono]):
     def __init__(self, session: AsyncSession) -> None:
-        self.session = session
-
-    async def get_by_id(self, dono_id: uuid.UUID) -> Optional[Dono]:
-        stmt = select(Dono).where(Dono.id == dono_id)
-        result = await self.session.execute(stmt)
-        return result.scalar_one_or_none()
+        super().__init__(Dono, session)
 
     async def get_by_email(self, email: str) -> Optional[Dono]:
         stmt = select(Dono).where(Dono.email == email.strip().lower())
