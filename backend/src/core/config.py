@@ -1,5 +1,9 @@
 from typing import List
+
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+DEFAULT_DEV_SECRET_KEY = "sua-chave-secreta-de-pelo-menos-32-caracteres-para-desenvolvimento"
 
 
 class Settings(BaseSettings):
@@ -22,7 +26,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/hstronomia"
 
     # Autenticação e Segurança (JWT)
-    SECRET_KEY: str = "sua-chave-secreta-de-pelo-menos-32-caracteres-para-desenvolvimento"
+    SECRET_KEY: str = DEFAULT_DEV_SECRET_KEY
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 480
     OPERATIONAL_TOKEN_EXPIRE_MINUTES: int = 120
@@ -36,6 +40,21 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         extra="ignore"
     )
+
+    @model_validator(mode="after")
+    def validar_seguranca_producao(self) -> "Settings":
+        if self.ENVIRONMENT.strip().lower() == "production":
+            chave = self.SECRET_KEY.strip()
+            if len(chave) < 32 or chave == DEFAULT_DEV_SECRET_KEY:
+                raise ValueError(
+                    "Em produção (ENVIRONMENT=production), SECRET_KEY deve ter no mínimo "
+                    "32 caracteres e não pode usar o valor padrão de desenvolvimento."
+                )
+            if self.DEBUG:
+                raise ValueError(
+                    "Em produção (ENVIRONMENT=production), DEBUG deve ser False."
+                )
+        return self
 
 
 settings = Settings()

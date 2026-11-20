@@ -58,3 +58,8 @@ operational_login_rate_limiter = SlidingWindowRateLimiter(
     max_attempts=settings.OPERATIONAL_RATE_LIMIT_MAX_ATTEMPTS,
     window_seconds=settings.OPERATIONAL_RATE_LIMIT_WINDOW_SECONDS,
 )
+
+dono_login_rate_limiter = SlidingWindowRateLimiter(
+    max_attempts=settings.OPERATIONAL_RATE_LIMIT_MAX_ATTEMPTS,
+    window_seconds=settings.OPERATIONAL_RATE_LIMIT_WINDOW_SECONDS,
+)

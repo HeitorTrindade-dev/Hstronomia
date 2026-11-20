@@ -5,9 +5,26 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 
 class DonoCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     nome: str = Field(..., min_length=2, max_length=120)
     email: EmailStr
     senha: str = Field(..., min_length=6, max_length=100)
+
+    @field_validator("nome")
+    @classmethod
+    def normalizar_nome(cls, value: str) -> str:
+        if "\x00" in value:
+            raise ValueError("O nome não pode conter caracteres nulos.")
+        limpo = value.strip()
+        if len(limpo) < 2:
+            raise ValueError("O nome deve ter pelo menos 2 caracteres.")
+        return limpo
+
+    @field_validator("email")
+    @classmethod
+    def normalizar_email(cls, value: EmailStr) -> str:
+        return str(value).strip().lower()
 
 
 class DonoResponse(BaseModel):
@@ -20,8 +37,15 @@ class DonoResponse(BaseModel):
 
 
 class LoginRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     email: EmailStr
     senha: str = Field(..., min_length=1)
+
+    @field_validator("email")
+    @classmethod
+    def normalizar_email(cls, value: EmailStr) -> str:
+        return str(value).strip().lower()
 
 
 class OperacionalLoginRequest(BaseModel):

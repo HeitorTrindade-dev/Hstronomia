@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.controllers.deps import UserSession, get_current_user
 from src.core.database import get_db
-from src.core.rate_limit import operational_login_rate_limiter
+from src.core.rate_limit import dono_login_rate_limiter, operational_login_rate_limiter
 from src.schemas.auth import (
     AuthMeResponse,
     DonoCreate,
@@ -44,11 +44,43 @@ async def cadastrar_dono(
     summary="Login do Dono",
 )
 async def login_dono(
+    request: Request,
     data: LoginRequest,
     session: Annotated[AsyncSession, Depends(get_db)],
 ):
+    client_ip = request.client.host if request.client else "unknown"
+    rate_key = f"{client_ip}:{data.email}"
+
+    bloqueado, retry_after = dono_login_rate_limiter.is_blocked(rate_key)
+    if bloqueado:
+        logger.warning(
+            "Bloqueio por rate limit no login do Dono (ip=%s, email=%s, retry_after=%ss)",
+            client_ip,
+            data.email,
+            retry_after,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Muitas tentativas de autenticação. Tente novamente mais tarde.",
+            headers={"Retry-After": str(retry_after)},
+        )
+
     service = AuthService(session)
-    return await service.autenticar_dono(data)
+    try:
+        response = await service.autenticar_dono(data)
+    except HTTPException as exc:
+        if exc.status_code == status.HTTP_401_UNAUTHORIZED:
+            tentativas = dono_login_rate_limiter.record_failure(rate_key)
+            logger.warning(
+                "Falha no login do Dono (ip=%s, email=%s, tentativas=%d)",
+                client_ip,
+                data.email,
+                tentativas,
+            )
+        raise
+
+    dono_login_rate_limiter.reset_key(rate_key)
+    return response
 
 
 @router.post(

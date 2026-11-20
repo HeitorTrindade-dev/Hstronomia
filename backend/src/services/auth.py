@@ -6,7 +6,13 @@ from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.config import settings
-from src.core.security import create_access_token, hash_password, verify_password
+from src.core.security import (
+    DUMMY_PASSWORD_HASH,
+    compute_pin_fingerprint,
+    create_access_token,
+    hash_password,
+    verify_password,
+)
 from src.models.dono import Dono
 from src.repositories.dono import DonoRepository
 from src.repositories.restaurante import RestauranteRepository
@@ -50,6 +56,8 @@ class AuthService:
 
         dono = await self.dono_repo.get_by_email(data.email)
         if not dono:
+            # Mitigação de timing attack (OWASP A07): executa bcrypt mesmo quando o e-mail não existe
+            verify_password(data.senha, DUMMY_PASSWORD_HASH)
             raise credenciais_invalidas
 
         if not verify_password(data.senha, dono.senha_hash):
@@ -97,6 +105,7 @@ class AuthService:
             "sub": str(restaurante.id),
             "restaurante_id": str(restaurante.id),
             "role": role,
+            "pin_fp": compute_pin_fingerprint(restaurante.id, role, pin_limpo),
         }
         access_token = create_access_token(
             data=token_data,
