@@ -25,6 +25,11 @@ Esta pasta centraliza todas as instruções, regras de negócio e convenções p
    - Regras de imutabilidade de pedidos e histórico.
    - Regras de soft delete.
 
+4. **[security.md](file:///home/heitor/Documentos/workspace/projetos/pessoais/Hstronomia/agents/security.md)**:
+   - Regras de segurança alinhadas ao OWASP Top 10.
+   - Proteção contra IDOR, SQLi, XSS e enumeração de credenciais.
+   - Tipos monetários Decimal e sanitização de logs.
+
 ---
 
 ## Regras de Ouro Globais

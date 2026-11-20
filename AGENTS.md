@@ -7,6 +7,7 @@ As instruções detalhadas por área de atuação estão organizadas na pasta [a
 - 📖 **Visão Geral e Convenções Gerais**: [agents/README.md](file:///home/heitor/Documentos/workspace/projetos/pessoais/Hstronomia/agents/README.md)
 - ⚙️ **Backend (FastAPI, SQLAlchemy, Auth)**: [agents/backend.md](file:///home/heitor/Documentos/workspace/projetos/pessoais/Hstronomia/agents/backend.md)
 - 💻 **Frontend (React, Vite, Tailwind)**: [agents/frontend.md](file:///home/heitor/Documentos/workspace/projetos/pessoais/Hstronomia/agents/frontend.md)
+- 🔒 **Segurança & OWASP**: [agents/security.md](file:///home/heitor/Documentos/workspace/projetos/pessoais/Hstronomia/agents/security.md)
 - 🗄️ **Banco de Dados & Schema**: [agents/database.md](file:///home/heitor/Documentos/workspace/projetos/pessoais/Hstronomia/agents/database.md) e [schema.dbml](file:///home/heitor/Documentos/workspace/projetos/pessoais/Hstronomia/schema.dbml)
 - 📋 **Trilha de Auditoria**: [auditoria/indice.md](file:///home/heitor/Documentos/workspace/projetos/pessoais/Hstronomia/auditoria/indice.md)
 
@@ -47,3 +48,9 @@ As instruções detalhadas por área de atuação estão organizadas na pasta [a
        O merge na `main` ocorre após validação do PR.
 7. **Testes Automatizados para Regras Críticas**:
    - Todo Service com regras críticas de negócio (cálculos financeiros, taxas de serviço, descontos, autenticação de PIN e congelamento de itens) **deve obrigatoriamente** possuir testes automatizados via `pytest` no backend antes da abertura do PR.
+8. **Segurança Ofensiva e Defensiva (OWASP)**:
+   - Todo agente deve seguir estritamente o guia [agents/security.md](file:///home/heitor/Documentos/workspace/projetos/pessoais/Hstronomia/agents/security.md).
+   - Bloqueio estrito de IDOR (sempre validar `restaurante_id` junto ao `id` da entidade).
+   - Proibição de SQL Injection (somente queries parametrizadas com ORM).
+   - Tipos monetários exclusivamente em `Decimal`.
+   - Mensagens de autenticação genéricas contra enumeração de usuários.
