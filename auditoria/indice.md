@@ -8,6 +8,7 @@ Registro central de todas as mudanças significativas realizadas no projeto por 
 
 | Código | Data | Título | Status | Arquivo |
 | :--- | :--- | :--- | :--- | :--- |
+| **0018** | 2026-11-20 | Blindagem Multi-Tenant no BaseRepository contra IDOR Acidental | Concluído | [0018-blindagem-multitenant-repositories.md](file:///home/heitor/Documentos/workspace/projetos/pessoais/Hstronomia/auditoria/0018-blindagem-multitenant-repositories.md) |
 | **0017** | 2026-11-20 | Concorrência (Race Conditions) e Regras de Integridade em Comandas e KDS | Concluído | [0017-concorrencia-integridade-comandas-kds.md](file:///home/heitor/Documentos/workspace/projetos/pessoais/Hstronomia/auditoria/0017-concorrencia-integridade-comandas-kds.md) |
 | **0016** | 2026-11-20 | Hardening de Segurança OWASP em Autenticação, Segredos e Headers | Concluído | [0016-hardening-seguranca-owasp-auth.md](file:///home/heitor/Documentos/workspace/projetos/pessoais/Hstronomia/auditoria/0016-hardening-seguranca-owasp-auth.md) |
 | **0015** | 2026-11-20 | Listagem, Detalhamento e Cancelamento de Comandas | Concluído | [0015-listagem-detalhamento-cancelamento-comandas.md](file:///home/heitor/Documentos/workspace/projetos/pessoais/Hstronomia/auditoria/0015-listagem-detalhamento-cancelamento-comandas.md) |
