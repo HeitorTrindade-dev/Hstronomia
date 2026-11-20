@@ -7,10 +7,10 @@ from sqlalchemy.orm import selectinload
 
 from src.models.comanda import Comanda
 from src.models.item_comanda import ItemComanda
-from src.repositories.base import BaseRepository
+from src.repositories.base import TenantBaseRepository
 
 
-class ItemComandaRepository(BaseRepository[ItemComanda]):
+class ItemComandaRepository(TenantBaseRepository[ItemComanda]):
     """Repositório de itens de comanda com isolamento multi-tenant via Comanda.restaurante_id."""
 
     def __init__(self, session: AsyncSession) -> None:

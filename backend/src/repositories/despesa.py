@@ -6,12 +6,12 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.despesa import Despesa
-from src.repositories.base import BaseRepository
+from src.repositories.base import TenantBaseRepository
 
 CENTAVOS = Decimal("0.01")
 
 
-class DespesaRepository(BaseRepository[Despesa]):
+class DespesaRepository(TenantBaseRepository[Despesa]):
     """Repositório de despesas com isolamento estrito por restaurante_id."""
 
     def __init__(self, session: AsyncSession) -> None:

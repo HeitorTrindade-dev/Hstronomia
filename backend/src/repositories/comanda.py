@@ -7,10 +7,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.models.comanda import Comanda
-from src.repositories.base import BaseRepository
+from src.repositories.base import TenantBaseRepository
 
 
-class ComandaRepository(BaseRepository[Comanda]):
+class ComandaRepository(TenantBaseRepository[Comanda]):
     """Repositório de comandas com isolamento estrito por restaurante_id."""
 
     def __init__(self, session: AsyncSession) -> None:

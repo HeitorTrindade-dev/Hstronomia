@@ -1,4 +1,8 @@
-from src.repositories.base import BaseRepository
+from src.repositories.base import (
+    BaseRepository,
+    TenantBaseRepository,
+    TenantIsolationError,
+)
 from src.repositories.comanda import ComandaRepository
 from src.repositories.despesa import DespesaRepository
 from src.repositories.dono import DonoRepository
@@ -14,4 +18,6 @@ __all__ = [
     "ItemComandaRepository",
     "ItemRepository",
     "RestauranteRepository",
+    "TenantBaseRepository",
+    "TenantIsolationError",
 ]

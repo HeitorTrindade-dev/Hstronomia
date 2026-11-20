@@ -43,3 +43,32 @@ class BaseRepository(Generic[ModelType]):
         result = await self.session.execute(stmt)
         await self.session.flush()
         return result.rowcount > 0
+
+
+class TenantIsolationError(PermissionError, NotImplementedError):
+    """Exceção lançada ao tentar executar operação sem escopo de restaurante_id em entidade multi-tenant."""
+
+
+class TenantBaseRepository(BaseRepository[ModelType]):
+    """Repositório base blindado para entidades operacionais multi-tenant (exige restaurante_id)."""
+
+    def _bloquear_acesso_sem_tenant(self, metodo: str) -> None:
+        raise TenantIsolationError(
+            f"Operação '{self.__class__.__name__}.{metodo}' bloqueada: "
+            "entidades operacionais exigem filtragem explícita por restaurante_id (proteção IDOR)."
+        )
+
+    async def get_by_id(self, id: uuid.UUID) -> Optional[ModelType]:
+        self._bloquear_acesso_sem_tenant("get_by_id")
+
+    async def get_by(self, field: Union[str, Any], value: Any) -> Optional[ModelType]:
+        self._bloquear_acesso_sem_tenant("get_by")
+
+    async def list_by(self, field: Union[str, Any], value: Any) -> List[ModelType]:
+        self._bloquear_acesso_sem_tenant("list_by")
+
+    async def list_all(self, limit: int = 100, offset: int = 0) -> List[ModelType]:
+        self._bloquear_acesso_sem_tenant("list_all")
+
+    async def delete_by_id(self, id: uuid.UUID) -> bool:
+        self._bloquear_acesso_sem_tenant("delete_by_id")
