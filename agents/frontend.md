@@ -6,11 +6,12 @@ Instruções específicas para desenvolvimento da interface web e mobile.
 
 ## 1. Stack e Ferramentas
 - **Framework**: React 18+ com Vite e TypeScript
-- **Estilização**: Tailwind CSS
+- **Estilização**: Tailwind CSS (seguir estritamente o [estilos.md](file:///home/heitor/Documentos/workspace/projetos/pessoais/Hstronomia/estilos.md))
 - **Ícones**: Lucide React
 - **Roteamento**: React Router DOM v6
 - **Requisições & Cache**: TanStack Query (React Query)
 - **Forms**: React Hook Form + Zod
+- **Guia de Design System e Cores**: Veja detalhes completos em [estilos.md](file:///home/heitor/Documentos/workspace/projetos/pessoais/Hstronomia/estilos.md)
 
 ---
 
