@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from src.controllers.v1.auth import router as auth_router
 from src.controllers.v1.comanda import router as comanda_router
 from src.controllers.v1.cozinha import router as cozinha_router
+from src.controllers.v1.financeiro import router as financeiro_router
 from src.controllers.v1.item import router as item_router
 from src.core.config import settings
 
@@ -23,6 +24,7 @@ app.add_middleware(
 )
 
 app.include_router(auth_router, prefix="/api/v1")
+app.include_router(financeiro_router, prefix="/api/v1")
 app.include_router(item_router, prefix="/api/v1")
 app.include_router(comanda_router, prefix="/api/v1")
 app.include_router(cozinha_router, prefix="/api/v1")
