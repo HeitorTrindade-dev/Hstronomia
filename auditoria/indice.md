@@ -8,6 +8,7 @@ Registro central de todas as mudanças significativas realizadas no projeto por 
 
 | Código | Data | Título | Status | Arquivo |
 | :--- | :--- | :--- | :--- | :--- |
+| **0027** | 2026-11-20 | Documentação Oficial do Repositório (README.md) | Concluído | [0027-readme-documentacao-geral.md](file:///home/heitor/Documentos/workspace/projetos/pessoais/Hstronomia/auditoria/0027-readme-documentacao-geral.md) |
 | **0026** | 2026-11-20 | Consolidação do Frontend Completo (Garçom, Cozinha KDS e Painel Financeiro) | Concluído | [0026-consolidacao-frontend-garcom-kds-financeiro.md](file:///home/heitor/Documentos/workspace/projetos/pessoais/Hstronomia/auditoria/0026-consolidacao-frontend-garcom-kds-financeiro.md) |
 | **0025** | 2026-11-20 | Painel do Dono: Gestão Multi-Restaurante e Cardápio Completo | Concluído | [0025-painel-dono-restaurantes-e-cardapio.md](file:///home/heitor/Documentos/workspace/projetos/pessoais/Hstronomia/auditoria/0025-painel-dono-restaurantes-e-cardapio.md) |
 | **0024** | 2026-11-20 | Telas de Autenticação: Login, Cadastro e Terminal por PIN com Keypad Touch | Concluído | [0024-telas-autenticacao-login-cadastro-pin-keypad.md](file:///home/heitor/Documentos/workspace/projetos/pessoais/Hstronomia/auditoria/0024-telas-autenticacao-login-cadastro-pin-keypad.md) |
