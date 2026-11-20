@@ -5,7 +5,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict
 
 StatusItemCozinha = Literal["pendente", "em_preparo", "pronto", "entregue"]
-StatusFilaCozinha = Literal["pendente", "em_preparo"]
+StatusFilaCozinha = Literal["pendente", "em_preparo", "pronto"]
 
 
 class CozinhaPedidoStatusUpdate(BaseModel):

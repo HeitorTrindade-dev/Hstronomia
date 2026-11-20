@@ -36,6 +36,14 @@ class ComandaCreate(BaseModel):
             raise ValueError(
                 "Informe o número da mesa ou um identificador para abrir a comanda."
             )
+        if self.tipo_atendimento == "mesa" and self.numero_mesa is None:
+            raise ValueError(
+                "Para atendimento em mesa, o número da mesa é obrigatório."
+            )
+        if self.tipo_atendimento in ("balcao", "viagem") and self.numero_mesa is not None:
+            raise ValueError(
+                "Pedidos de balcão ou viagem não devem informar número de mesa."
+            )
         return self
 
 
