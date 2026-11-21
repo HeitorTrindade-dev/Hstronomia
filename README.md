@@ -16,6 +16,49 @@ A plataforma combina uma retaguarda gerencial robusta com interfaces especializa
 
 ---
 
+## Demonstracao Visual da Operacao
+
+Abaixo, capturas de tela reais da plataforma operando no restaurante modelo **Trattoria Bella Notte**:
+
+### 1. Terminal do Garcom & Salao (Mobile-First)
+
+| Mapa de Mesas com Semaforo ao Vivo | Lancamento com Chips de Cozinha | Previa e Fechamento de Caixa |
+| :---: | :---: | :---: |
+| <img src="assets/screenshots/01-salao-mesas.png" alt="Salao e Mesas" width="280" /> | <img src="assets/screenshots/02-lancamento-pedido.png" alt="Lancamento de Pedido" width="280" /> | <img src="assets/screenshots/03-fechamento-conta.png" alt="Fechamento de Conta" width="280" /> |
+| *Status em tempo real: verde livre, ambar ocupada com tempo decorrido e valor acumulado.* | *Seletor tactil, chips de observacao rapida e customizacao livre para a cozinha.* | *Previa com calculo automatico de 10% opcional, desconto e calculadora de troco.* |
+
+---
+
+### 2. Cozinha KDS (Kitchen Display System) & Producao
+
+<p align="center">
+  <img src="assets/screenshots/04-cozinha-kds.png" alt="Cozinha KDS Dark Mode" width="100%" />
+</p>
+
+*Fila Kanban em Dark Mode permanente (`bg-zinc-950`), colunas 'Aguardando', 'No Fogo / Montagem' e 'Prontos p/ Servir', semaforo dinamico de tempo de espera (<10m, 10-20m, >20m pulsante) e avanco em 1 toque.*
+
+---
+
+### 3. Painel do Dono & Gestao Financeira
+
+<p align="center">
+  <img src="assets/screenshots/05-painel-financeiro.png" alt="Painel Financeiro do Dono" width="100%" />
+</p>
+
+*Dashboard financeiro consolidado: vendas brutas, despesas operacionais, saldo liquido e distribuicao proporcional em barras por categoria.*
+
+---
+
+### 4. Acesso Operacional Seguro por PIN
+
+<p align="center">
+  <img src="assets/screenshots/06-acesso-pin.png" alt="Acesso Operacional por PIN" width="320" />
+</p>
+
+*Autenticacao ultra-rapida de garcons e cozinheiros via slug + PIN numerico com teclado virtual de 56px e protecao ativa contra forca bruta (Rate Limit 429).*
+
+---
+
 ## Principais Diferenciais e Regras de Negocio
 
 ### 1. Isolamento Multi-Tenant Rigido
